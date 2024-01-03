@@ -8,7 +8,7 @@
 #define MASKING_ORDER 3
 
 // Need one more share than the order we want to have.
-typedef struct Masked {int shares[MASKING_ORDER+1];} Masked;
+typedef struct Masked {uint16_t shares[MASKING_ORDER+1];} Masked;
 
 
 uint16_t random16(){
@@ -45,21 +45,21 @@ void b2a_reg(Masked* y, Masked* x, int k){
         // Exchange the c modulo with the modulo function later
         T[u].shares[0] = u % NEWHOPE_Q;
         for (int i = 1; i <= MASKING_ORDER; i++){
-            T_p[u].shares[i] = 0;
+            T[u].shares[i] = 0;
         }
     }
 
-    for(int i = 1; i < MASKING_ORDER; i++){
+    for(int i = 0; i < MASKING_ORDER; i++){
         for(int u = 0;  u < (1 << k); u++) {
             for(int j = 0; j <= MASKING_ORDER; j++){
-                T_p[u].shares[j] = T[u^ x->shares[i]].shares[j];
+                T_p[u].shares[j] = T[u^(x->shares[i])].shares[j];
             }
         }
 
         for(int u = 0;  u < (1 << k); u++) {
             arith_refresh(&T_p[u]);
             for(int j = 0; j <= MASKING_ORDER; j++){
-                T[u].shares[j] = T_p[u^ x->shares[i]].shares[j];
+                T[u].shares[j] = T_p[u].shares[j];
             }
         }
     }
@@ -76,19 +76,13 @@ void b2a(Masked* y, Masked* x, int k){
 
     for(int j = 0; j < k; j++){
         Masked z;
-        for(int i = 1; i <= MASKING_ORDER; i++){
-            z.shares[i] = (x->shares[i] >> j) & 1;
+        for(int i = 0; i <= MASKING_ORDER; i++){
+            z.shares[i] = ((x->shares[i]) >> j) & 1;
         }
         Masked t;
         b2a_reg(&t, &z, 1);
         for(int i = 0; i <= MASKING_ORDER; i++){
-            // Shift the result at position i so that it is now the jth bit.
-            uint16_t temp = t.shares[i] << j;
-            // Put temp at the jth bit of the share, XOR can be used for this as the shares were zeroed earlier.
-            y->shares[i] ^=  temp;
-            // Not sure if this is correct.
-            // Exchange the c modulo with the modulo function later
-            y->shares[i] = (y->shares[i] + temp) % NEWHOPE_Q;
+            y->shares[i] = (y->shares[i] + (t.shares[i] << j)) % NEWHOPE_Q;
         }
     }
 }
@@ -100,8 +94,8 @@ int main(int argc, char *argv[]){
     //}
     srand(time(NULL));
     Masked x;
-    //Masked y;
-    //basic_gen_shares(&x, &y);
+    Masked y;
+    basic_gen_shares(&x, &y);
 
     uint16_t X = 0;
     for(int i = 0; i <= MASKING_ORDER; i++){
@@ -110,11 +104,12 @@ int main(int argc, char *argv[]){
     }
 
     b2a(&y, &x, 16);
+
     uint16_t Y = 0;
     for(int i = 0; i <= MASKING_ORDER; i++){
         printf("Y Share %d: %d \n", i, y.shares[i]);
         Y = (Y + y.shares[i]) % NEWHOPE_Q;
     }
     printf("X: %d \n", X  % NEWHOPE_Q);
-    printf("Y: %d \n", Y);
+    printf("Y: %d \n\n", Y);
 }
