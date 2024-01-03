@@ -16,7 +16,7 @@ static uint16_t coeff_freeze(uint16_t x)
 {
   uint16_t m,r;
   int16_t c;
-  r = x % NEWHOPE_Q;
+  r = x % NEWHOPE_Q;  // Should be barret reduce it seems.
 
   m = r - NEWHOPE_Q;
   c = m;
@@ -225,7 +225,7 @@ void poly_uniform(poly *a, const unsigned char *seed)
   uint16_t val;
   uint64_t state[25];
   uint8_t buf[SHAKE128_RATE];
-  uint8_t extseed[NEWHOPE_SYMBYTES+1];
+  uint8_t extseed[NEWHOPE_SYMBYTES+1];     // Brackets missing around NEWHOPE_SYMBYTES+1 compared to avx2/poly.c
   int i,j;
 
   for(i=0;i<NEWHOPE_SYMBYTES;i++)
