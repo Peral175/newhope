@@ -139,12 +139,47 @@ void A2B(Masked* y, Masked* x){
     boolean_refresh(y);
 }
 
+void masked_Hamming_Weight(Masked* a, Masked* x, int k){
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        a->shares[i] = 0;
+    }
+
+    for(int j = 0; j < k; j++){
+        Masked z;
+        for(int i = 0; i <= MASKING_ORDER; i++){
+            z.shares[i] = ((x->shares[i]) >> j) & 1;
+        }
+        Masked t;
+        B2A(&t, &z, 1);
+        for(int i = 0; i <= MASKING_ORDER; i++){
+            a->shares[i] = (a->shares[i] + t.shares[i]) % NEWHOPE_Q;
+        }
+    }
+}
+
+void SecSampleBasic(Masked* a, Masked* x, Masked* y, int k){
+    Masked Hx;
+    Masked Hy;
+
+    // Calculate the hamming weight of the masked values
+    masked_Hamming_Weight(&Hx, x, 16);
+    masked_Hamming_Weight(&Hy, y, 16);
+
+    // Calculate the substraction mod q for every share
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        a->shares[i] = (Hx.shares[i] + NEWHOPE_Q - Hy.shares[i]);
+    }
+
+    // Refresh shares
+    arith_refresh(a);
+}
+
 int main(int argc, char *argv[]){
     //if (argc != 2){
     //	return -1;
     //}
     srand(time(NULL));
-    /*Masked x;
+    Masked x;
     Masked y;
     basic_gen_shares(&x, &y);
 
@@ -167,9 +202,20 @@ int main(int argc, char *argv[]){
     printf("Y: %d \n", Y % NEWHOPE_Q);
 
     uint16_t reg_sample = (rx + NEWHOPE_Q - ry) % NEWHOPE_Q;
-    */
 
-    // Alex
+    Masked masked_sample;
+    SecSampleBasic(&masked_sample, &x, &y, 16);
+
+    uint16_t masked_sam = 0;
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        masked_sam = (masked_sam + masked_sample.shares[i]) % NEWHOPE_Q;
+    }
+
+    printf("Reg Sample %d\n", reg_sample);
+    printf("Masked Sample %d\n", masked_sam);
+
+    /*// Alex
     Masked x2,y2;
     basic_gen_shares_mod(&x2);
     uint16_t X2 = 0;
@@ -186,6 +232,5 @@ int main(int argc, char *argv[]){
         Y2 ^= y2.shares[i];
     }
     printf("X2: %d \n", X2             ); // bin
-    printf("Y2: %d \n", Y2  % NEWHOPE_Q); // arith
-
+    printf("Y2: %d \n", Y2  % NEWHOPE_Q); // arith*/
 }
