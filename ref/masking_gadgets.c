@@ -36,6 +36,8 @@ void arith_refresh(Masked* x){
         x->shares[MASKING_ORDER] = (x->shares[MASKING_ORDER] + NEWHOPE_Q - r) % NEWHOPE_Q;
     }
 }
+
+// Alex
 void boolean_refresh(Masked* x){
     for(int j = 0; j < MASKING_ORDER; j++){
         uint16_t r = random16() % NEWHOPE_Q;  // todo: add k to this?
@@ -97,7 +99,8 @@ void opti_B2A(Masked* y, Masked* x, int k){
     }
 }
 
-void a2b_reg(Masked* y, Masked* x, int k){
+// Alex
+void A2B(Masked* y, Masked* x, int k){
     Masked T[NEWHOPE_Q];
     Masked T_p[NEWHOPE_Q];
     for(int u = 0;  u < NEWHOPE_Q; u++) {
@@ -124,11 +127,13 @@ void a2b_reg(Masked* y, Masked* x, int k){
     }
     boolean_refresh(y);
 }
+
+// Alex
 // todo: optimized a2b
-void a2b(Masked* y, Masked* x, int k) {
+void A2B_opti(Masked* y, Masked* x, int k) {
     int l = 2;
     if (k <= l) {
-        a2b_reg(y,x,k);
+        A2B(y,x,k);
     } else {
         for (int i=0; i<=MASKING_ORDER; i++){
 
@@ -165,6 +170,7 @@ int main(int argc, char *argv[]){
 
     uint16_t reg_sample = (rx + NEWHOPE_Q - ry) % NEWHOPE_Q;
 
+    // Alex
     Masked x2,y2;
     basic_gen_shares(&x2, &y2);
 //    x2.shares[0] = 10000;
@@ -177,7 +183,7 @@ int main(int argc, char *argv[]){
         X2 = (X2 + x2.shares[i]) % NEWHOPE_Q;
     }
 
-    a2b_reg(&y2,&x2, 16);
+    A2B(&y2,&x2, 16);
     uint16_t Y2 = 0;
     for(int i = 0; i <= MASKING_ORDER; i++){
         printf("Y2 Share %d: %d \n", i, y2.shares[i]);
