@@ -178,7 +178,7 @@ int main(int argc, char *argv[]){
         X2 = (X2 + x2.shares[i]) % NEWHOPE_Q;
     }
 
-    A2B(&y2,&x2, 16);
+    A2B(&y2,&x2);
 
     uint16_t Y2 = 0;
     for(int i = 0; i <= MASKING_ORDER; i++){
