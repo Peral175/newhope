@@ -51,10 +51,10 @@ void arith_refresh(Masked* x){
 // Alex
 void boolean_refresh(Masked* x){
     for(int j = 0; j < MASKING_ORDER; j++){
-        uint16_t r = random16();  // todo: add k to this?
+        uint16_t r = random16();
         x->shares[j] = (x->shares[j] ^ r);
         x->shares[MASKING_ORDER] = x->shares[MASKING_ORDER] ^ r;
-    }   // ERROR sometimes: Process finished with exit code 139 (interrupted by signal 11:SIGSEGV)
+    }
 }
 
 
@@ -139,6 +139,36 @@ void A2B(Masked* y, Masked* x){
     boolean_refresh(y);
 }
 
+void secAnd(Masked* z, Masked* a, Masked* b){
+    for (int i=0; i<=MASKING_ORDER;i++){
+        z->shares[i] = a->shares[i] & b->shares[i];
+    }
+    for (int i=0; i<=MASKING_ORDER;i++){
+        for (int j=i+1; j<=MASKING_ORDER;j++){
+            uint16_t r,r_p;
+            r = random16();
+            r_p = (r ^ (a->shares[i] & b->shares[j])) ^ (a->shares[j] & b->shares[i]);
+            z->shares[i] ^= r;
+            z->shares[j] ^= r_p;
+        }
+    }
+}
+
+void secMult(Masked* z, Masked* a, Masked* b){
+    for (int i=0; i<=MASKING_ORDER;i++){
+        z->shares[i] = (a->shares[i] * b->shares[i]) % NEWHOPE_Q;
+    }
+    for (int i=0; i<=MASKING_ORDER;i++){
+        for (int j=i+1; j<=MASKING_ORDER;j++){
+            uint16_t r,r_p;
+            r = random16() % NEWHOPE_Q;
+            r_p = ((r + (a->shares[i] * b->shares[j]) % NEWHOPE_Q) + (a->shares[j] * b->shares[i]) % NEWHOPE_Q) % NEWHOPE_Q;
+            z->shares[i] -= r % NEWHOPE_Q;
+            z->shares[j] += r_p % NEWHOPE_Q;    // todo: Verify
+        }
+    }
+}
+
 void masked_Hamming_Weight(Masked* a, Masked* x, int k){
     for(int i = 0; i <= MASKING_ORDER; i++){
         a->shares[i] = 0;
@@ -179,41 +209,41 @@ int main(int argc, char *argv[]){
     //	return -1;
     //}
     srand(time(NULL));
-    Masked x;
-    Masked y;
-    basic_gen_shares(&x, &y);
-
-    uint16_t X = 0;
-    uint16_t Y = 0;
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("X Share %d: %d \n", i, x.shares[i]);
-        X ^= x.shares[i];
-        printf("Y Share %d: %d \n", i, y.shares[i]);
-        Y ^= y.shares[i];
-    }
-
-    unsigned char i, rx = 0, ry = 0;
-    for(i=0;i<16;i++) {
-        rx += (X >> i) & 1;
-        ry += (Y >> i) & 1;
-    }
-
-    printf("X: %d \n", X % NEWHOPE_Q);
-    printf("Y: %d \n", Y % NEWHOPE_Q);
-
-    uint16_t reg_sample = (rx + NEWHOPE_Q - ry) % NEWHOPE_Q;
-
-    Masked masked_sample;
-    SecSampleBasic(&masked_sample, &x, &y, 16);
-
-    uint16_t masked_sam = 0;
-
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        masked_sam = (masked_sam + masked_sample.shares[i]) % NEWHOPE_Q;
-    }
-
-    printf("Reg Sample %d\n", reg_sample);
-    printf("Masked Sample %d\n", masked_sam);
+//    Masked x;
+//    Masked y;
+//    basic_gen_shares(&x, &y);
+//
+//    uint16_t X = 0;
+//    uint16_t Y = 0;
+//    for(int i = 0; i <= MASKING_ORDER; i++){
+//        printf("X Share %d: %d \n", i, x.shares[i]);
+//        X ^= x.shares[i];
+//        printf("Y Share %d: %d \n", i, y.shares[i]);
+//        Y ^= y.shares[i];
+//    }
+//
+//    unsigned char i, rx = 0, ry = 0;
+//    for(i=0;i<16;i++) {
+//        rx += (X >> i) & 1;
+//        ry += (Y >> i) & 1;
+//    }
+//
+//    printf("X: %d \n", X % NEWHOPE_Q);
+//    printf("Y: %d \n", Y % NEWHOPE_Q);
+//
+//    uint16_t reg_sample = (rx + NEWHOPE_Q - ry) % NEWHOPE_Q;
+//
+//    Masked masked_sample;
+//    SecSampleBasic(&masked_sample, &x, &y, 16);
+//
+//    uint16_t masked_sam = 0;
+//
+//    for(int i = 0; i <= MASKING_ORDER; i++){
+//        masked_sam = (masked_sam + masked_sample.shares[i]) % NEWHOPE_Q;
+//    }
+//
+//    printf("Reg Sample %d\n", reg_sample);
+//    printf("Masked Sample %d\n", masked_sam);
 
     /*// Alex
     Masked x2,y2;
@@ -233,4 +263,51 @@ int main(int argc, char *argv[]){
     }
     printf("X2: %d \n", X2             ); // bin
     printf("Y2: %d \n", Y2  % NEWHOPE_Q); // arith*/
+
+    Masked a,b,c,d,e,f;
+    basic_gen_shares_mod(&a);
+    basic_gen_shares_mod(&b);
+    basic_gen_shares_mod(&d);
+    basic_gen_shares_mod(&e);
+    uint16_t A = 0;
+    uint16_t B = 0;
+    uint16_t C = 0;
+    secAnd(&c,&a,&b);
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("a Share %d: %d \n", i, a.shares[i]);
+        A ^= a.shares[i];
+    }
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("b Share %d: %d \n", i, b.shares[i]);
+        B ^= b.shares[i];
+    }
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("c Share %d: %d \n", i, c.shares[i]);
+        C ^= c.shares[i];
+    }
+    printf("A: %d \n", A % NEWHOPE_Q);
+    printf("B: %d \n", B % NEWHOPE_Q);
+    printf("C: %d \n", C % NEWHOPE_Q);
+    printf("A & B: %d \n", (A & B) % NEWHOPE_Q);
+
+    uint16_t D = 0;
+    uint16_t E = 0;
+    uint16_t F = 0;
+    secMult(&f,&d,&e);
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("d Share %d: %d \n", i, d.shares[i]);
+        D += d.shares[i];
+    }
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("e Share %d: %d \n", i, e.shares[i]);
+        E += e.shares[i];
+    }
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("f Share %d: %d \n", i, f.shares[i]);
+        F += f.shares[i];
+    }
+    printf("D: %d \n", D % NEWHOPE_Q);
+    printf("E: %d \n", E % NEWHOPE_Q);
+    printf("F: %d \n", F % NEWHOPE_Q);
+    printf("D * E mod Q: %d \n", (D * E) % NEWHOPE_Q);
 }
