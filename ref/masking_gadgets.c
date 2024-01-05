@@ -111,7 +111,7 @@ void opti_B2A(Masked* y, Masked* x, int k){
 }
 
 // Alex
-void A2B(Masked* y, Masked* x, int k){
+void A2B(Masked* y, Masked* x){
     Masked T[NEWHOPE_Q];
     Masked T_p[NEWHOPE_Q];
     for(int u = 0;  u < NEWHOPE_Q; u++) {
