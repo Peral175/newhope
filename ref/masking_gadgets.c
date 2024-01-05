@@ -36,6 +36,13 @@ void arith_refresh(Masked* x){
         x->shares[MASKING_ORDER] = (x->shares[MASKING_ORDER] + NEWHOPE_Q - r) % NEWHOPE_Q;
     }
 }
+void boolean_refresh(Masked* x){
+    for(int j = 0; j < MASKING_ORDER; j++){
+        uint16_t r = random16() % NEWHOPE_Q;  // todo: add k to this?
+        x->shares[j] = (x->shares[j] ^ r);
+        x->shares[MASKING_ORDER] = x->shares[MASKING_ORDER] ^ r;
+    }   // ERROR sometimes: Process finished with exit code 139 (interrupted by signal 11:SIGSEGV)
+}
 
 
 // Used in opti_B2A, this function is not used for anything other than k = 1
@@ -90,41 +97,43 @@ void opti_B2A(Masked* y, Masked* x, int k){
     }
 }
 
-// From paper "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryption"
-// Almost identical to opti_B2A, except for the last line, where the shift by j is missing.
-void masked_Hamming_Weight(Masked* a, Masked* x, int k){
+void a2b_reg(Masked* y, Masked* x, int k){
+    Masked T[NEWHOPE_Q];
+    Masked T_p[NEWHOPE_Q];
+    for(int u = 0;  u < NEWHOPE_Q; u++) {
+        T[u].shares[0] = u;
+        for (int i = 1; i <= MASKING_ORDER; i++){
+            T[u].shares[i] = 0;
+        }
+    }
+    for(int i = 0; i < MASKING_ORDER; i++){
+        for(int u = 0;  u < NEWHOPE_Q; u++) {
+            for(int j = 0; j <= MASKING_ORDER; j++){
+                T_p[u].shares[j] = T[(u + x->shares[i])%NEWHOPE_Q].shares[j];
+            }
+        }
+        for(int u = 0;  u < NEWHOPE_Q; u++) {
+            boolean_refresh(&T_p[u]);
+            for(int j = 0; j <= MASKING_ORDER; j++){
+                T[u].shares[j] = T_p[u].shares[j];
+            }
+        }
+    }
     for(int i = 0; i <= MASKING_ORDER; i++){
-        a->shares[i] = 0;
+        y->shares[i] = T[x->shares[MASKING_ORDER]].shares[i];
     }
-
-    for(int j = 0; j < k; j++){
-        Masked z;
-        for(int i = 0; i <= MASKING_ORDER; i++){
-            z.shares[i] = ((x->shares[i]) >> j) & 1;
-        }
-        Masked t;
-        B2A(&t, &z, 1);
-        for(int i = 0; i <= MASKING_ORDER; i++){
-            a->shares[i] = (a->shares[i] + t.shares[i]) % NEWHOPE_Q;
-        }
-    }
+    boolean_refresh(y);
 }
+// todo: optimized a2b
+void a2b(Masked* y, Masked* x, int k) {
+    int l = 2;
+    if (k <= l) {
+        a2b_reg(y,x,k);
+    } else {
+        for (int i=0; i<=MASKING_ORDER; i++){
 
-void SecSampleBasic(Masked* a, Masked* x, Masked* y, int k){
-    Masked Hx;
-    Masked Hy;
-
-    // Calculate the hamming weight of the masked values
-    masked_Hamming_Weight(&Hx, x, 16);
-    masked_Hamming_Weight(&Hy, y, 16);
-
-    // Calculate the substraction mod q for every share
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        a->shares[i] = (Hx.shares[i] + NEWHOPE_Q - Hy.shares[i]);
+        }
     }
-
-    // Refresh shares
-    arith_refresh(a);
 }
 
 int main(int argc, char *argv[]){
@@ -156,14 +165,25 @@ int main(int argc, char *argv[]){
 
     uint16_t reg_sample = (rx + NEWHOPE_Q - ry) % NEWHOPE_Q;
 
-    Masked masked_sample;
-    SecSampleBasic(&masked_sample, &x, &y, 16);
-
-    uint16_t masked_sam = 0;
+    Masked x2,y2;
+    basic_gen_shares(&x2, &y2);
+//    x2.shares[0] = 10000;
+//    x2.shares[1] = 10001;
+//    x2.shares[2] = 10002;
+//    x2.shares[3] = 10003;
+    uint16_t X2 = 0;
     for(int i = 0; i <= MASKING_ORDER; i++){
-        masked_sam = (masked_sam + masked_sample.shares[i]) % NEWHOPE_Q;
+        printf("X2 Share %d: %d \n", i, x2.shares[i]);
+        X2 = (X2 + x2.shares[i]) % NEWHOPE_Q;
     }
 
-    printf("Reg Sample %d\n", reg_sample);
-    printf("Masked Sample %d\n", masked_sam);
+    a2b_reg(&y2,&x2, 16);
+    uint16_t Y2 = 0;
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("Y2 Share %d: %d \n", i, y2.shares[i]);
+        Y2 ^= y2.shares[i];
+    }
+    printf("X2: %d \n", X2             ); // bin
+    printf("Y2: %d \n", Y2  % NEWHOPE_Q); // arith
+
 }
