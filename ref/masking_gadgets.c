@@ -18,6 +18,17 @@ uint16_t random16(){
     return x;
 }
 
+uint16_t random16mod(){
+    //srand(time(NULL));  // Set at start of the new_hope functions later, don't keep it here
+    uint16_t x = rand() % NEWHOPE_Q;
+    return x;
+}
+
+void basic_gen_shares_mod(Masked *x){
+    for(int i = 0; i <= MASKING_ORDER; i++) {
+        x->shares[i] = random16mod();
+    }
+}
 
 // Only for testing
 void basic_gen_shares(Masked *x, Masked *y){
@@ -40,7 +51,7 @@ void arith_refresh(Masked* x){
 // Alex
 void boolean_refresh(Masked* x){
     for(int j = 0; j < MASKING_ORDER; j++){
-        uint16_t r = random16() % NEWHOPE_Q;  // todo: add k to this?
+        uint16_t r = random16();  // todo: add k to this?
         x->shares[j] = (x->shares[j] ^ r);
         x->shares[MASKING_ORDER] = x->shares[MASKING_ORDER] ^ r;
     }   // ERROR sometimes: Process finished with exit code 139 (interrupted by signal 11:SIGSEGV)
@@ -128,25 +139,12 @@ void A2B(Masked* y, Masked* x, int k){
     boolean_refresh(y);
 }
 
-// Alex
-// todo: optimized a2b
-void A2B_opti(Masked* y, Masked* x, int k) {
-    int l = 2;
-    if (k <= l) {
-        A2B(y,x,k);
-    } else {
-        for (int i=0; i<=MASKING_ORDER; i++){
-
-        }
-    }
-}
-
 int main(int argc, char *argv[]){
     //if (argc != 2){
     //	return -1;
     //}
     srand(time(NULL));
-    Masked x;
+    /*Masked x;
     Masked y;
     basic_gen_shares(&x, &y);
 
@@ -169,14 +167,11 @@ int main(int argc, char *argv[]){
     printf("Y: %d \n", Y % NEWHOPE_Q);
 
     uint16_t reg_sample = (rx + NEWHOPE_Q - ry) % NEWHOPE_Q;
+    */
 
     // Alex
     Masked x2,y2;
-    basic_gen_shares(&x2, &y2);
-//    x2.shares[0] = 10000;
-//    x2.shares[1] = 10001;
-//    x2.shares[2] = 10002;
-//    x2.shares[3] = 10003;
+    basic_gen_shares_mod(&x2);
     uint16_t X2 = 0;
     for(int i = 0; i <= MASKING_ORDER; i++){
         printf("X2 Share %d: %d \n", i, x2.shares[i]);
@@ -184,6 +179,7 @@ int main(int argc, char *argv[]){
     }
 
     A2B(&y2,&x2, 16);
+
     uint16_t Y2 = 0;
     for(int i = 0; i <= MASKING_ORDER; i++){
         printf("Y2 Share %d: %d \n", i, y2.shares[i]);
