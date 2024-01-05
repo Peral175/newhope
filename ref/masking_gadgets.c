@@ -3,15 +3,13 @@
 #include <stdlib.h>
 #include <math.h>  // Take out later probably
 #include <time.h>  // Take out later probably
-#include "params.h"
-#include "fips202.h"
-#include "poly.h"
+#include "masking_gadgets.h"
+
 
 #define NEWHOPE_Q 12289
-#define MASKING_ORDER 3
 
 // Need one more share than the order we want to have.
-typedef struct Masked {uint16_t shares[MASKING_ORDER+1];} Masked;
+//typedef struct Masked {uint16_t shares[MASKING_ORDER+1];} Masked;
 
 
 uint16_t random16(){
