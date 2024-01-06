@@ -192,33 +192,11 @@ void secMult(Masked* z, Masked* a, Masked* b){
             uint16_t r,r_p;
             r = random16() % NEWHOPE_Q;
             r_p = ((r + (a->shares[i] * b->shares[j]) % NEWHOPE_Q) + (a->shares[j] * b->shares[i]) % NEWHOPE_Q) % NEWHOPE_Q;
-            z->shares[i] -= r % NEWHOPE_Q;
-            z->shares[j] += r_p % NEWHOPE_Q;    // todo: Verify
+            z->shares[i] = (NEWHOPE_Q + z->shares[i] - r) % NEWHOPE_Q;
+            z->shares[j] = (z->shares[j]+ r_p) % NEWHOPE_Q;
         }
     }
 }
-
-/*
- * This function implements the algorithm 18 SecExpo
- * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
- * Input:
- *      Masked* a: first operand
- *      Masked* e: exponent
- *      Masked* z: output of operation
- **/
-// todo: not yet tested! ceil and log2 problem
-/*void secExpo(Masked* z, Masked* a, int e){
-    z->shares[0] = 1;
-    for (int j=1;j<=MASKING_ORDER;j++){
-        z->shares[j] = 0;
-    }
-    double i;
-    printf("\n%d %f", e,ceil(log2( e)));
-    for (i=ceil(log2( e));i>=0;i--){
-        Masked c;
-
-    }
-}*/
 
 /*
  * This function implements the algorithm 12 RefreshMasks
@@ -227,17 +205,51 @@ void secMult(Masked* z, Masked* a, Masked* b){
  *      Masked* a: Mask to be refreshed
  *      Masked* c: output of operation
  **/
-// refresh masks is called from secExpo
-// todo: not yet tested!
 void refreshMasks(Masked* c, Masked* a){
     for (int i=0;i<=MASKING_ORDER;i++){
         c->shares[i] = a->shares[i];
     }
     for (int i=0;i<=MASKING_ORDER;i++){
         for (int j=i+1; j<=MASKING_ORDER;j++){
-            uint16_t r = random16();
-            c->shares[i] += r;
-            c->shares[j] -= r;
+            uint16_t r = random16mod();
+            c->shares[i] = (c->shares[i] + r) % NEWHOPE_Q;
+            c->shares[j] = (NEWHOPE_Q + c->shares[j] - r) % NEWHOPE_Q;
+        }
+    }
+}
+
+/*
+ * This function implements the algorithm 18 SecExpo
+ * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
+ * Input:
+ *      Masked* A: first operand
+ *      Masked* e: exponent
+ *      Masked* z: output of operation
+ **/
+/*
+double Log2(double n){
+    return log(n)/log(2)
+}
+*/
+void secExpo(Masked* B, Masked* A, int e){
+    B->shares[0] = 1;
+    for (int j=1;j<=MASKING_ORDER;j++){
+        B->shares[j] = 0;
+    }
+    for (int i=ceil(log2( e));i>=0;--i){
+        Masked C;
+        refreshMasks(&C, B);
+        Masked tmp2;
+        secMult(&tmp2, B, &C);
+        for(int j = 0; j <= MASKING_ORDER; j++){
+            B->shares[j] = tmp2.shares[j] % NEWHOPE_Q;
+        }
+        if ((e & (int) pow(2,i)) == (int) pow(2,i)) {
+            Masked tmp3;
+            secMult(&tmp3, A, B);
+            for(int j = 0; j <= MASKING_ORDER; j++){
+                B->shares[j] = tmp3.shares[j] % NEWHOPE_Q;
+            }
         }
     }
 }
@@ -277,11 +289,11 @@ void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
     arith_refresh(a);
 }
 
-//int main(int argc, char *argv[]){
-    //if (argc != 2){
-    //	return -1;
-    //}
-    //srand(time(NULL));
+int main(int argc, char *argv[]){
+//    if (argc != 2){
+//    	return -1;
+//    }
+    srand(time(NULL));
 //    Masked x;
 //    Masked y;
 //    basic_gen_shares(&x, &y);
@@ -337,52 +349,66 @@ void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
     printf("X2: %d \n", X2             ); // bin
     printf("Y2: %d \n", Y2  % NEWHOPE_Q); // arith*/
 
-//    Masked a,b,c,d,e,f;
-//    basic_gen_shares_mod(&a);
-//    basic_gen_shares_mod(&b);
-//    basic_gen_shares_mod(&d);
-//    basic_gen_shares_mod(&e);
-//    uint16_t A = 0;
-//    uint16_t B = 0;
-//    uint16_t C = 0;
-//    secAnd(&c,&a,&b);
-//    for(int i = 0; i <= MASKING_ORDER; i++){
-//        printf("a Share %d: %d \n", i, a.shares[i]);
-//        A ^= a.shares[i];
-//    }
-//    for(int i = 0; i <= MASKING_ORDER; i++){
-//        printf("b Share %d: %d \n", i, b.shares[i]);
-//        B ^= b.shares[i];
-//    }
-//    for(int i = 0; i <= MASKING_ORDER; i++){
-//        printf("c Share %d: %d \n", i, c.shares[i]);
-//        C ^= c.shares[i];
-//    }
-//    printf("A: %d \n", A % NEWHOPE_Q);
-//    printf("B: %d \n", B % NEWHOPE_Q);
-//    printf("C: %d \n", C % NEWHOPE_Q);
-//    printf("A & B: %d \n", (A & B) % NEWHOPE_Q);
-//
-//    uint16_t D = 0;
-//    uint16_t E = 0;
-//    uint16_t F = 0;
-//    secMult(&f,&d,&e);
-//    for(int i = 0; i <= MASKING_ORDER; i++){
-//        printf("d Share %d: %d \n", i, d.shares[i]);
-//        D += d.shares[i];
-//    }
-//    for(int i = 0; i <= MASKING_ORDER; i++){
-//        printf("e Share %d: %d \n", i, e.shares[i]);
-//        E += e.shares[i];
-//    }
-//    for(int i = 0; i <= MASKING_ORDER; i++){
-//        printf("f Share %d: %d \n", i, f.shares[i]);
-//        F += f.shares[i];
-//    }
-//    printf("D: %d \n", D % NEWHOPE_Q);
-//    printf("E: %d \n", E % NEWHOPE_Q);
-//    printf("F: %d \n", F % NEWHOPE_Q);
-//    printf("D * E mod Q: %d \n", (D * E) % NEWHOPE_Q);
+    Masked a,b,c,d,e,f;
+    basic_gen_shares_mod(&a);
+    basic_gen_shares_mod(&b);
+    basic_gen_shares_mod(&d);
+    basic_gen_shares_mod(&e);
+    uint16_t A = 0;
+    uint16_t B = 0;
+    uint16_t C = 0;
+    secAnd(&c,&a,&b);
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("a Share %d: %d \n", i, a.shares[i]);
+        A ^= a.shares[i];
+    }
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("b Share %d: %d \n", i, b.shares[i]);
+        B ^= b.shares[i];
+    }
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("c Share %d: %d \n", i, c.shares[i]);
+        C ^= c.shares[i];
+    }
+    printf("A: %d \n", A % NEWHOPE_Q);
+    printf("B: %d \n", B % NEWHOPE_Q);
+    printf("C: %d \n", C % NEWHOPE_Q);
+    printf("A & B: %d \n", (A & B) % NEWHOPE_Q);
 
-
-//}
+    uint16_t D = 0;
+    uint16_t E = 0;
+    uint16_t F = 0;
+    secMult(&f,&d,&e);
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("d Share %d: %d \n", i, d.shares[i]);
+        D += d.shares[i];
+    }
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("e Share %d: %d \n", i, e.shares[i]);
+        E += e.shares[i];
+    }
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("f Share %d: %d \n", i, f.shares[i]);
+        F += f.shares[i];
+    }
+    printf("D: %d \n", D % NEWHOPE_Q);
+    printf("E: %d \n", E % NEWHOPE_Q);
+    printf("F: %d \n", F % NEWHOPE_Q);
+    printf("D * E mod Q: %d \n", (D * E) % NEWHOPE_Q);
+    Masked x1,y1;
+    uint16_t X1=0;
+    uint16_t Y1=0;
+    basic_gen_shares_mod(&x1);
+    int eee = 2;
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("x Share %d: %d \n", i, x1.shares[i]);
+        X1 += x1.shares[i];
+    }
+    printf("X: %d \n", X1 % NEWHOPE_Q);
+    secExpo(&y1,&x1,eee);
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("y Share %d: %d \n", i, y1.shares[i]);
+        Y1 += y1.shares[i];
+    }
+    printf("Y: %d \n", Y1 % NEWHOPE_Q); // expected result: 439
+}
