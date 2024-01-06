@@ -47,7 +47,13 @@ void arith_refresh(Masked* x){
     }
 }
 
-// Alex
+/*
+ * This function implements the algorithm 9 Refresh
+ * from: "High-order Table-based Conversion Algorithms and Masking
+Lattice-based Encryption"
+ * Input:
+ *      Masked* x: Mask to be refreshed
+ **/
 void boolean_refresh(Masked* x){
     for(int j = 0; j < MASKING_ORDER; j++){
         uint16_t r = random16();
@@ -109,7 +115,15 @@ void opti_B2A(Masked* y, Masked* x, int k){
     }
 }
 
-// Alex
+/*
+ * This function implements the algorithm 8 ArithmeticToBoolean
+ * from: "High-order Table-based Conversion Algorithms and Masking
+Lattice-based Encryption"
+ * Input:
+ *      Masked* x: a pointer to a type Masked which contains shares
+ *      Masked* y: a pointer to a type Masked which contains shares
+ *      y will be transformed into a boolean masked form via the arithmetic values of x.
+ **/
 void A2B(Masked* y, Masked* x){
     Masked T[NEWHOPE_Q];
     Masked T_p[NEWHOPE_Q];
@@ -138,6 +152,14 @@ void A2B(Masked* y, Masked* x){
     boolean_refresh(y);
 }
 
+/*
+ * This function implements the algorithm 11 SecAnd
+ * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
+ * Input:
+ *      Masked* a: first operand
+ *      Masked* b: second operand
+ *      Masked* z: output of operation
+ **/
 void secAnd(Masked* z, Masked* a, Masked* b){
     for (int i=0; i<=MASKING_ORDER;i++){
         z->shares[i] = a->shares[i] & b->shares[i];
@@ -153,6 +175,14 @@ void secAnd(Masked* z, Masked* a, Masked* b){
     }
 }
 
+/*
+ * This function implements the algorithm 17 SecMult
+ * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
+ * Input:
+ *      Masked* a: first operand
+ *      Masked* b: second operand
+ *      Masked* z: output of operation
+ **/
 void secMult(Masked* z, Masked* a, Masked* b){
     for (int i=0; i<=MASKING_ORDER;i++){
         z->shares[i] = (a->shares[i] * b->shares[i]) % NEWHOPE_Q;
@@ -168,6 +198,14 @@ void secMult(Masked* z, Masked* a, Masked* b){
     }
 }
 
+/*
+ * This function implements the algorithm 18 SecExpo
+ * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
+ * Input:
+ *      Masked* a: first operand
+ *      Masked* e: exponent
+ *      Masked* z: output of operation
+ **/
 // todo: not yet tested! ceil and log2 problem
 void secExpo(Masked* z, Masked* a, int e){
     z->shares[0] = 1;
@@ -182,6 +220,13 @@ void secExpo(Masked* z, Masked* a, int e){
     }
 }
 
+/*
+ * This function implements the algorithm 12 RefreshMasks
+ * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
+ * Input:
+ *      Masked* a: Mask to be refreshed
+ *      Masked* c: output of operation
+ **/
 // refresh masks is called from secExpo
 // todo: not yet tested!
 void refreshMasks(Masked* c, Masked* a){
