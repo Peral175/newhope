@@ -207,7 +207,7 @@ void secMult(Masked* z, Masked* a, Masked* b){
  *      Masked* z: output of operation
  **/
 // todo: not yet tested! ceil and log2 problem
-void secExpo(Masked* z, Masked* a, int e){
+/*void secExpo(Masked* z, Masked* a, int e){
     z->shares[0] = 1;
     for (int j=1;j<=MASKING_ORDER;j++){
         z->shares[j] = 0;
@@ -218,7 +218,7 @@ void secExpo(Masked* z, Masked* a, int e){
         Masked c;
 
     }
-}
+}*/
 
 /*
  * This function implements the algorithm 12 RefreshMasks
@@ -260,7 +260,7 @@ void masked_Hamming_Weight(Masked* a, Masked* x, int k){
     }
 }
 
-void SecSampleBasic(Masked* a, Masked* x, Masked* y, int k){
+void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
     Masked Hx;
     Masked Hy;
 
@@ -277,11 +277,11 @@ void SecSampleBasic(Masked* a, Masked* x, Masked* y, int k){
     arith_refresh(a);
 }
 
-int main(int argc, char *argv[]){
+//int main(int argc, char *argv[]){
     //if (argc != 2){
     //	return -1;
     //}
-    srand(time(NULL));
+    //srand(time(NULL));
 //    Masked x;
 //    Masked y;
 //    basic_gen_shares(&x, &y);
@@ -307,7 +307,7 @@ int main(int argc, char *argv[]){
 //    uint16_t reg_sample = (rx + NEWHOPE_Q - ry) % NEWHOPE_Q;
 //
 //    Masked masked_sample;
-//    SecSampleBasic(&masked_sample, &x, &y, 16);
+//    masked_binomial_dist(&masked_sample, &x, &y, 16);
 //
 //    uint16_t masked_sam = 0;
 //
@@ -385,4 +385,4 @@ int main(int argc, char *argv[]){
 //    printf("D * E mod Q: %d \n", (D * E) % NEWHOPE_Q);
 
 
-}
+//}

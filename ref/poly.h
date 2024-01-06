@@ -12,6 +12,11 @@ typedef struct {
   uint16_t coeffs[NEWHOPE_N];
 } poly __attribute__ ((aligned (32)));
 
+// A polynomial split into MASKING_ORDER+1 shares for the purpose of masking
+typedef struct {
+    poly poly_shares[MASKING_ORDER+1];
+} masked_poly;
+
 void poly_uniform(poly *a, const unsigned char *seed);
 void poly_sample(poly *r, const unsigned char *seed, unsigned char nonce);
 void poly_add(poly *r, const poly *a, const poly *b);

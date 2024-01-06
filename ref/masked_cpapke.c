@@ -42,12 +42,13 @@ static void gen_a(poly *a, const unsigned char *seed)
     poly_uniform(a,seed);
 }
 
-// To be relegated to masking_gadgets.c later
-void masked_sample(poly *r, const unsigned char *seed, unsigned char nonce){
+
+void masked_sample(masked_poly *r, const unsigned char *seed, unsigned char nonce){
 #if NEWHOPE_K != 8
 #error "poly_sample in poly.c only supports k=8"
 #endif
-    unsigned char buf[128], a, b;
+    unsigned char buf[128*(MASKING_ORDER+1)];
+    Masked a, b;
     int i,j;
 
     unsigned char extseed[NEWHOPE_SYMBYTES+2];
@@ -59,17 +60,23 @@ void masked_sample(poly *r, const unsigned char *seed, unsigned char nonce){
     for(i=0;i<NEWHOPE_N/64;i++) /* Generate noise in blocks of 64 coefficients */
     {
         extseed[NEWHOPE_SYMBYTES+1] = i;
-        shake256(buf,128,extseed,NEWHOPE_SYMBYTES+2);
+        shake256(buf,128*(MASKING_ORDER+1),extseed,NEWHOPE_SYMBYTES+2);
         for(j=0;j<64;j++)
         {
-            a = buf[2*j];
-            b = buf[2*j+1];
-            r->coeffs[64*i+j] = hw(a) + NEWHOPE_Q - hw(b);
+            for(int z = 0; z <= MASKING_ORDER; z++){
+                a.shares[z] = buf[2*(MASKING_ORDER+1)*j+z];
+                b.shares[z] = buf[2*(MASKING_ORDER+1)*j+MASKING_ORDER+1+z];
+            }
+            Masked samp;
+            masked_binomial_dist(&samp, &a, &b, 16);
+            for(int z = 0; z <= MASKING_ORDER; z++) {
+                r->poly_shares[z].coeffs[64 * i + j] = samp.shares[z];
+            }
         }
     }
 }
 
-void masked_cpapke_keypair(unsigned char *pk, unsigned char *sk){
+/*void masked_cpapke_keypair(unsigned char *pk, unsigned char *sk){
     poly ahat, ehat, ahat_shat, bhat, shat;
     unsigned char z[2*NEWHOPE_SYMBYTES];
     unsigned char *publicseed = z;
@@ -100,4 +107,4 @@ void masked_cpapke_enc(unsigned char *c, const unsigned char *m, const unsigned 
 
 void masked_cpapke_dec(unsigned char *m, const unsigned char *c, const unsigned char *sk){
 
-}
+}*/
