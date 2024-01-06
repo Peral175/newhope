@@ -1,10 +1,9 @@
-#include <stdio.h> // Take out later probably
+#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <math.h>  // Take out later probably
+#include <math.h>
 #include <time.h>  // Take out later probably
 #include "masking_gadgets.h"
-
 
 #define NEWHOPE_Q 12289
 
@@ -169,6 +168,35 @@ void secMult(Masked* z, Masked* a, Masked* b){
     }
 }
 
+// todo: not yet tested! ceil and log2 problem
+void secExpo(Masked* z, Masked* a, int e){
+    z->shares[0] = 1;
+    for (int j=1;j<=MASKING_ORDER;j++){
+        z->shares[j] = 0;
+    }
+    double i;
+    printf("\n%d %f", e,ceil(log2( e)));
+    for (i=ceil(log2( e));i>=0;i--){
+        Masked c;
+
+    }
+}
+
+// refresh masks is called from secExpo
+// todo: not yet tested!
+void refreshMasks(Masked* c, Masked* a){
+    for (int i=0;i<=MASKING_ORDER;i++){
+        c->shares[i] = a->shares[i];
+    }
+    for (int i=0;i<=MASKING_ORDER;i++){
+        for (int j=i+1; j<=MASKING_ORDER;j++){
+            uint16_t r = random16();
+            c->shares[i] += r;
+            c->shares[j] -= r;
+        }
+    }
+}
+
 void masked_Hamming_Weight(Masked* a, Masked* x, int k){
     for(int i = 0; i <= MASKING_ORDER; i++){
         a->shares[i] = 0;
@@ -264,50 +292,52 @@ int main(int argc, char *argv[]){
     printf("X2: %d \n", X2             ); // bin
     printf("Y2: %d \n", Y2  % NEWHOPE_Q); // arith*/
 
-    Masked a,b,c,d,e,f;
-    basic_gen_shares_mod(&a);
-    basic_gen_shares_mod(&b);
-    basic_gen_shares_mod(&d);
-    basic_gen_shares_mod(&e);
-    uint16_t A = 0;
-    uint16_t B = 0;
-    uint16_t C = 0;
-    secAnd(&c,&a,&b);
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("a Share %d: %d \n", i, a.shares[i]);
-        A ^= a.shares[i];
-    }
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("b Share %d: %d \n", i, b.shares[i]);
-        B ^= b.shares[i];
-    }
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("c Share %d: %d \n", i, c.shares[i]);
-        C ^= c.shares[i];
-    }
-    printf("A: %d \n", A % NEWHOPE_Q);
-    printf("B: %d \n", B % NEWHOPE_Q);
-    printf("C: %d \n", C % NEWHOPE_Q);
-    printf("A & B: %d \n", (A & B) % NEWHOPE_Q);
+//    Masked a,b,c,d,e,f;
+//    basic_gen_shares_mod(&a);
+//    basic_gen_shares_mod(&b);
+//    basic_gen_shares_mod(&d);
+//    basic_gen_shares_mod(&e);
+//    uint16_t A = 0;
+//    uint16_t B = 0;
+//    uint16_t C = 0;
+//    secAnd(&c,&a,&b);
+//    for(int i = 0; i <= MASKING_ORDER; i++){
+//        printf("a Share %d: %d \n", i, a.shares[i]);
+//        A ^= a.shares[i];
+//    }
+//    for(int i = 0; i <= MASKING_ORDER; i++){
+//        printf("b Share %d: %d \n", i, b.shares[i]);
+//        B ^= b.shares[i];
+//    }
+//    for(int i = 0; i <= MASKING_ORDER; i++){
+//        printf("c Share %d: %d \n", i, c.shares[i]);
+//        C ^= c.shares[i];
+//    }
+//    printf("A: %d \n", A % NEWHOPE_Q);
+//    printf("B: %d \n", B % NEWHOPE_Q);
+//    printf("C: %d \n", C % NEWHOPE_Q);
+//    printf("A & B: %d \n", (A & B) % NEWHOPE_Q);
+//
+//    uint16_t D = 0;
+//    uint16_t E = 0;
+//    uint16_t F = 0;
+//    secMult(&f,&d,&e);
+//    for(int i = 0; i <= MASKING_ORDER; i++){
+//        printf("d Share %d: %d \n", i, d.shares[i]);
+//        D += d.shares[i];
+//    }
+//    for(int i = 0; i <= MASKING_ORDER; i++){
+//        printf("e Share %d: %d \n", i, e.shares[i]);
+//        E += e.shares[i];
+//    }
+//    for(int i = 0; i <= MASKING_ORDER; i++){
+//        printf("f Share %d: %d \n", i, f.shares[i]);
+//        F += f.shares[i];
+//    }
+//    printf("D: %d \n", D % NEWHOPE_Q);
+//    printf("E: %d \n", E % NEWHOPE_Q);
+//    printf("F: %d \n", F % NEWHOPE_Q);
+//    printf("D * E mod Q: %d \n", (D * E) % NEWHOPE_Q);
 
-    uint16_t D = 0;
-    uint16_t E = 0;
-    uint16_t F = 0;
-    secMult(&f,&d,&e);
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("d Share %d: %d \n", i, d.shares[i]);
-        D += d.shares[i];
-    }
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("e Share %d: %d \n", i, e.shares[i]);
-        E += e.shares[i];
-    }
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("f Share %d: %d \n", i, f.shares[i]);
-        F += f.shares[i];
-    }
-    printf("D: %d \n", D % NEWHOPE_Q);
-    printf("E: %d \n", E % NEWHOPE_Q);
-    printf("F: %d \n", F % NEWHOPE_Q);
-    printf("D * E mod Q: %d \n", (D * E) % NEWHOPE_Q);
+
 }
