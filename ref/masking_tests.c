@@ -4,6 +4,7 @@
 #include "fips202.h"
 #include "masking_gadgets.h"
 #include "masked_cpapke.h"
+#include <stdlib.h>
 
 static void gen_a(poly *a, const unsigned char *seed)
 {
@@ -25,24 +26,45 @@ int main(int argc, char *argv[]){
 
     for(int i = 0; i < 32; i++){
         for(int j = 0; j <= MASKING_ORDER; j++){
-            m_combined[i] ^= m[i + (j*MASKING_ORDER)];
+            m_combined[i] ^= m[i + (j*NEWHOPE_SYMBYTES)];
         }
     }
 
-    test_from_message(m, &test_m);
 
-    recombine(&p_test_m, &test_m);
+    poly test_m2;
 
-    poly_tomsg(m_dec, &p_test_m);
+    //poly_frommsg(&test_m2, m_combined);
 
+    //masked_poly_frommsg(&test_m, m);
 
-    /*randombytes(coin,NEWHOPE_SYMBYTES * (MASKING_ORDER+1));
+    //recombine(&p_test_m, &test_m);
 
-    for(int i = 0; i < 32; i++){
-        for(int j = 0; j <= MASKING_ORDER; j++){
-            m_combined[i] = m_combined[i] + m[i + (j*MASKING_ORDER)] % NEWHOPE_Q;
-        }
+    //poly_tomsg(m_dec, &p_test_m);
+
+    //poly_tomsg(m_dec, &test_m2);
+    /*Masked temp1;
+    for(int k=0; k <= MASKING_ORDER; k ++) {
+        temp1.shares[k] = (-((m[0 + k * (NEWHOPE_SYMBYTES)] >> 0) & 1)) & (NEWHOPE_Q / 2);
     }
+
+    uint16_t tval = 0;
+    for(int j = 0; j <= MASKING_ORDER; j++){
+        tval ^= temp1.shares[j];
+    }
+
+    unsigned int mask;
+    mask = -((m_combined[0] >> 0)&1) & (NEWHOPE_Q / 2);
+
+    printf("Before: %d, After dec: %d \n", tval, mask);*/
+
+
+    //recombine(&p_test_m, &test_m);
+    //poly_frommsg(&test_m2, m_combined);
+
+    //poly_tomsg(m_dec, &p_test_m);
+    //printf("What is this %d \n", -(1 & 1) & (NEWHOPE_Q/2));
+
+    randombytes(coin,NEWHOPE_SYMBYTES * (MASKING_ORDER+1));
 
     for(int i = 0; i<32; i++){
         printf("Message index %d, Combined: %d \n", i, m_combined[i]);
@@ -52,7 +74,7 @@ int main(int argc, char *argv[]){
 
     masked_cpapke_enc(c, m, pk, coin);
 
-    masked_cpapke_dec(m_dec, c, sk);*/
+    masked_cpapke_dec(m_dec, c, sk);
 
     for(int i = 0; i<32; i++){
         printf("Message index %d, Before: %d, After dec: %d \n", i, m_combined[i], m_dec[i]);
