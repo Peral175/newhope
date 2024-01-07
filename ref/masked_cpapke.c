@@ -94,14 +94,14 @@ void recombine(poly *r, const masked_poly *a){
 // Transform masked polynomial into byte array
 void masked_poly_tobytes(unsigned char *r, const masked_poly *p){
     for(int i = 0; i <= MASKING_ORDER; i++){
-        poly_tobytes(r+(NEWHOPE_CPAPKE_PUBLICKEYBYTES*i), &(p->poly_shares[i]));
+        poly_tobytes(r+(NEWHOPE_CPAPKE_SECRETKEYBYTES*i), &(p->poly_shares[i]));
     }
 }
 
 // Transform byte array into masked polynomial
 void masked_poly_frombytes(masked_poly *r, const unsigned char *a){
     for(int i = 0; i <= MASKING_ORDER; i++){
-        poly_frombytes(&(r->poly_shares[i]), a+(NEWHOPE_CPAPKE_PUBLICKEYBYTES*i));
+        poly_frombytes(&(r->poly_shares[i]), a+(NEWHOPE_CPAPKE_SECRETKEYBYTES*i));
     }
 }
 
