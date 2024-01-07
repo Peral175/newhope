@@ -216,7 +216,7 @@ void refreshMasks(Masked* c, Masked* a){
             c->shares[j] = (NEWHOPE_Q + c->shares[j] - r) % NEWHOPE_Q;
         }
     }
-}
+}  //algo 12
 
 /*
  * This function implements the algorithm 18 SecExpo
@@ -231,7 +231,7 @@ double Log2(double n){
     return log(n)/log(2)
 }
 */
-/*void secExpo(Masked* B, Masked* A, int e){
+void secExpo(Masked* B, Masked* A, int e){
     B->shares[0] = 1;
     for (int j=1;j<=MASKING_ORDER;j++){
         B->shares[j] = 0;
@@ -252,8 +252,50 @@ double Log2(double n){
             }
         }
     }
-}*/
+}
 
+void polyZeroTestRed(int K, Masked* X,  Masked* Y){
+    for (int k=0; k<K;k++){
+        for (int i=0; i<=MASKING_ORDER;i++){
+            Y[k].shares[i] = 0;
+        }
+        for (int j=0;j<16;j++){
+            uint16_t a = random16mod();
+            for (int i=0;i<=MASKING_ORDER;i++){
+                Y[k].shares[i] = Y[k].shares[i] + (a * X[j].shares[i]);
+            }
+        }
+    }
+}  //algo 23
+void zeroTestExpoShares(Masked* B, Masked* A){
+    Masked tmp;
+    secExpo(&tmp,A,NEWHOPE_Q-1);
+    B->shares[0] = NEWHOPE_Q + 1 - tmp.shares[0] % NEWHOPE_Q;
+    for (int j=1;j<=MASKING_ORDER;j++){
+        B->shares[j] = NEWHOPE_Q - tmp.shares[j] % NEWHOPE_Q;
+    }
+} //algo 19
+int polyZeroTestExpo(int K, Masked* X, Masked* Y){
+    polyZeroTestRed(K,X,Y);
+    Masked B,C;
+    zeroTestExpoShares(&B,&Y[0]);
+    for (int j=1;j<K;j++){
+        Masked tmp;
+        zeroTestExpoShares(&C,&Y[j]);
+        secMult(&tmp,&B,&C);
+        B = tmp;
+    }
+    refreshMasks(&C,&B);
+    int b=0;
+    for (int m=0;m<=MASKING_ORDER;m++){
+        b += C.shares[m] %NEWHOPE_Q;
+    }
+    if (b == 1){
+        return 1;
+    } else {
+        return 0;
+    }
+} //algo 25
 void masked_Hamming_Weight(Masked* a, Masked* x, int k){
     for(int i = 0; i <= MASKING_ORDER; i++){
         a->shares[i] = 0;
@@ -289,48 +331,50 @@ void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
     arith_refresh(a);
 }
 
-/*int main(int argc, char *argv[]){
+int main(int argc, char *argv[]) {
 //    if (argc != 2){
 //    	return -1;
 //    }
     srand(time(NULL));
-//    Masked x;
-//    Masked y;
-//    basic_gen_shares(&x, &y);
-//
-//    uint16_t X = 0;
-//    uint16_t Y = 0;
-//    for(int i = 0; i <= MASKING_ORDER; i++){
-//        printf("X Share %d: %d \n", i, x.shares[i]);
-//        X ^= x.shares[i];
-//        printf("Y Share %d: %d \n", i, y.shares[i]);
-//        Y ^= y.shares[i];
-//    }
-//
-//    unsigned char i, rx = 0, ry = 0;
-//    for(i=0;i<16;i++) {
-//        rx += (X >> i) & 1;
-//        ry += (Y >> i) & 1;
-//    }
-//
-//    printf("X: %d \n", X % NEWHOPE_Q);
-//    printf("Y: %d \n", Y % NEWHOPE_Q);
-//
-//    uint16_t reg_sample = (rx + NEWHOPE_Q - ry) % NEWHOPE_Q;
-//
-//    Masked masked_sample;
-//    masked_binomial_dist(&masked_sample, &x, &y, 16);
-//
-//    uint16_t masked_sam = 0;
-//
-//    for(int i = 0; i <= MASKING_ORDER; i++){
-//        masked_sam = (masked_sam + masked_sample.shares[i]) % NEWHOPE_Q;
-//    }
-//
-//    printf("Reg Sample %d\n", reg_sample);
-//    printf("Masked Sample %d\n", masked_sam);
+    /*
+    Masked x;
+    Masked y;
+    basic_gen_shares(&x, &y);
 
-    // Alex
+    uint16_t X = 0;
+    uint16_t Y = 0;
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("X Share %d: %d \n", i, x.shares[i]);
+        X ^= x.shares[i];
+        printf("Y Share %d: %d \n", i, y.shares[i]);
+        Y ^= y.shares[i];
+    }
+
+    unsigned char i, rx = 0, ry = 0;
+    for(i=0;i<16;i++) {
+        rx += (X >> i) & 1;
+        ry += (Y >> i) & 1;
+    }
+
+    printf("X: %d \n", X % NEWHOPE_Q);
+    printf("Y: %d \n", Y % NEWHOPE_Q);
+
+    uint16_t reg_sample = (rx + NEWHOPE_Q - ry) % NEWHOPE_Q;
+
+    Masked masked_sample;
+    masked_binomial_dist(&masked_sample, &x, &y, 16);
+
+    uint16_t masked_sam = 0;
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        masked_sam = (masked_sam + masked_sample.shares[i]) % NEWHOPE_Q;
+    }
+
+    printf("Reg Sample %d\n", reg_sample);
+    printf("Masked Sample %d\n", masked_sam);
+    */
+
+    /*// Alex
     Masked x2,y2;
     basic_gen_shares_mod(&x2);
     uint16_t X2 = 0;
@@ -347,8 +391,9 @@ void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
         Y2 ^= y2.shares[i];
     }
     printf("X2: %d \n", X2             ); // bin
-    printf("Y2: %d \n", Y2  % NEWHOPE_Q); // arith
+    printf("Y2: %d \n", Y2  % NEWHOPE_Q); // arith*/
 
+    /*
     Masked a,b,c,d,e,f;
     basic_gen_shares_mod(&a);
     basic_gen_shares_mod(&b);
@@ -410,5 +455,59 @@ void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
         printf("y Share %d: %d \n", i, y1.shares[i]);
         Y1 += y1.shares[i];
     }
-    printf("Y: %d \n", Y1 % NEWHOPE_Q); // expected result: 439
-}*/
+    printf("Y should be : %d \n", (int) pow(X1,eee) % NEWHOPE_Q);
+    printf("Y: %d \n", Y1 % NEWHOPE_Q);
+    */
+    /* todo: test
+    // Algorithm 23 test!
+    Masked v,w,x,y;
+    basic_gen_shares_mod(&v);
+    basic_gen_shares_mod(&w);
+    Masked arr1[] = {v, w};
+    basic_gen_shares_mod(&x);
+    basic_gen_shares_mod(&y);
+    Masked arr2[] = {x, y};
+    polyZeroTestRed(1,arr1,arr2);
+     */
+    /*
+    // Algorithm 19 test!
+    Masked a,b;
+    uint16_t A;
+    a.shares[0]=0;
+    a.shares[1]=0;
+    a.shares[2]=0;
+    a.shares[3]=0;
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("x Share %d: %d \n", i, a.shares[i]);
+        A += a.shares[i];
+    }
+    zeroTestExpoShares(&b,&a);
+    uint16_t B;
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("x Share %d: %d \n", i, b.shares[i]);
+        B += b.shares[i];
+    }
+    printf("A: %d \n", A % NEWHOPE_Q);
+    printf("B: %d \n", B % NEWHOPE_Q);
+    */
+    /**/
+    // todo: test
+    // Algorithm 25 test!
+    Masked v,w,x,y;
+    basic_gen_shares_mod(&v);
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("v Share %d: %d \n", i, v.shares[i]);
+    }
+    w = v;
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("w Share %d: %d \n", i, w.shares[i]);
+    }
+
+//    basic_gen_shares_mod(&w);
+//    Masked arr1[] = {v, w};
+//    basic_gen_shares_mod(&x);
+//    basic_gen_shares_mod(&y);
+//    Masked arr2[] = {x, y};
+//    int bool = polyZeroTestExpo(1,arr1,arr2);
+//    printf("bool: %d \n", bool);
+}
