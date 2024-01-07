@@ -231,7 +231,7 @@ double Log2(double n){
     return log(n)/log(2)
 }
 */
-void secExpo(Masked* B, Masked* A, int e){
+/*void secExpo(Masked* B, Masked* A, int e){
     B->shares[0] = 1;
     for (int j=1;j<=MASKING_ORDER;j++){
         B->shares[j] = 0;
@@ -252,7 +252,7 @@ void secExpo(Masked* B, Masked* A, int e){
             }
         }
     }
-}
+}*/
 
 void masked_Hamming_Weight(Masked* a, Masked* x, int k){
     for(int i = 0; i <= MASKING_ORDER; i++){
@@ -289,7 +289,7 @@ void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
     arith_refresh(a);
 }
 
-int main(int argc, char *argv[]){
+/*int main(int argc, char *argv[]){
 //    if (argc != 2){
 //    	return -1;
 //    }
@@ -330,7 +330,7 @@ int main(int argc, char *argv[]){
 //    printf("Reg Sample %d\n", reg_sample);
 //    printf("Masked Sample %d\n", masked_sam);
 
-    /*// Alex
+    // Alex
     Masked x2,y2;
     basic_gen_shares_mod(&x2);
     uint16_t X2 = 0;
@@ -347,7 +347,7 @@ int main(int argc, char *argv[]){
         Y2 ^= y2.shares[i];
     }
     printf("X2: %d \n", X2             ); // bin
-    printf("Y2: %d \n", Y2  % NEWHOPE_Q); // arith*/
+    printf("Y2: %d \n", Y2  % NEWHOPE_Q); // arith
 
     Masked a,b,c,d,e,f;
     basic_gen_shares_mod(&a);
@@ -411,4 +411,4 @@ int main(int argc, char *argv[]){
         Y1 += y1.shares[i];
     }
     printf("Y: %d \n", Y1 % NEWHOPE_Q); // expected result: 439
-}
+}*/

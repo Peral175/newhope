@@ -42,6 +42,94 @@ static void gen_a(poly *a, const unsigned char *seed)
     poly_uniform(a,seed);
 }
 
+//TODO: Make these functions static
+
+// Applying the NTT to every share of a polynomial
+void NTT_masked_poly(masked_poly *a){
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        poly_ntt(&(a->poly_shares[i]));
+    }
+}
+
+// Applying the reverse NTT to every share of a polynomial
+void reverse_NTT_masked_poly(masked_poly *a){
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        poly_invntt(&(a->poly_shares[i]));
+    }
+}
+
+// Multiply a masked poly with a non-masked polynomial, both in the NTT domain
+void masked_poly_mul(masked_poly *r, const masked_poly *a, const poly *b){
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        poly_mul_pointwise(&r->poly_shares[i], &a->poly_shares[i], b);
+    }
+}
+
+// Addition of two masked polynomials
+void masked_poly_add(masked_poly *r, const masked_poly *a, const masked_poly *b){
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        poly_add(&r->poly_shares[i], &a->poly_shares[i], &b->poly_shares[i]);
+    }
+}
+
+// Substraction of an unmasked polynomial from a masked one
+void masked_poly_sub(masked_poly *r, const masked_poly *a, const poly *b){
+    poly_sub(&r->poly_shares[0], &a->poly_shares[0], b);
+    for(int i = 1; i <= MASKING_ORDER; i++){
+        r->poly_shares[i] = a->poly_shares[i];
+    }
+}
+
+// Recombine the shares of a (arithmetically) masked polynomial into the polynomial
+void recombine(poly *r, const masked_poly *a){
+    for(int i = 0; i<NEWHOPE_N; i++){
+        uint16_t coeff_i = 0;
+        for(int j = 0; j <= MASKING_ORDER; j++){
+            coeff_i = (coeff_i + a->poly_shares[j].coeffs[i]) % NEWHOPE_Q;
+        }
+        r->coeffs[i] = coeff_i;
+    }
+}
+
+// Transform masked polynomial into byte array
+void masked_poly_tobytes(unsigned char *r, const masked_poly *p){
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        poly_tobytes(r+(NEWHOPE_CPAPKE_PUBLICKEYBYTES*i), &(p->poly_shares[i]));
+    }
+}
+
+// Transform byte array into masked polynomial
+void masked_poly_frombytes(masked_poly *r, const unsigned char *a){
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        poly_frombytes(&(r->poly_shares[i]), a+(NEWHOPE_CPAPKE_PUBLICKEYBYTES*i));
+    }
+}
+
+// Get a polynomial from a (MASKING_ORDER+1)*32 Byte masked message. Assuming every 32 bytes represent 1 share of the message.
+void masked_poly_frommsg(masked_poly *r, const unsigned char *msg){
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        poly_frommsg(&(r->poly_shares[i]), msg+(32*i));
+    }
+}
+
+// Copied from the kyber implementation, gotta check more
+void test_from_message(const uint8_t m[(NEWHOPE_N/8)*(MASKING_ORDER+1)], masked_poly* y){
+    /* m is a boolean masking of the message*/
+    Masked t1,t2;
+    for(int i=0; i < NEWHOPE_N/8; ++i){
+        for(int j=0; j < 8; ++j){
+            for(int k=0; k < MASKING_ORDER+1; ++k){
+                t1.shares[k] = (m[i+k*(NEWHOPE_N/8)]>>j)&1;
+            }
+            opti_B2A(&t1, &t2, 1);
+
+            for(int k=0; k < MASKING_ORDER+1; ++k){
+                (y->poly_shares[k]).coeffs[i*8+j] = (t2.shares[k]*((NEWHOPE_Q+1)/2))%NEWHOPE_Q;
+            }
+        }
+    }
+}
+
 
 void masked_sample(masked_poly *r, const unsigned char *seed, unsigned char nonce){
 #if NEWHOPE_K != 8
@@ -76,8 +164,9 @@ void masked_sample(masked_poly *r, const unsigned char *seed, unsigned char nonc
     }
 }
 
-/*void masked_cpapke_keypair(unsigned char *pk, unsigned char *sk){
-    poly ahat, ehat, ahat_shat, bhat, shat;
+void masked_cpapke_keypair(unsigned char *pk, unsigned char *sk){
+    masked_poly ehat, ahat_shat, bhat, shat;
+    poly ahat;
     unsigned char z[2*NEWHOPE_SYMBYTES];
     unsigned char *publicseed = z;
     unsigned char *noiseseed = z+NEWHOPE_SYMBYTES;
@@ -89,22 +178,70 @@ void masked_sample(masked_poly *r, const unsigned char *seed, unsigned char nonc
     gen_a(&ahat, publicseed);
 
     masked_sample(&shat, noiseseed, 0);
-    poly_ntt(&shat);
+    NTT_masked_poly(&shat);
 
     masked_sample(&ehat, noiseseed, 1);
-    poly_ntt(&ehat);
+    NTT_masked_poly(&ehat);
 
-    poly_mul_pointwise(&ahat_shat, &shat, &ahat);
-    poly_add(&bhat, &ehat, &ahat_shat);
+    masked_poly_mul(&ahat_shat, &shat, &ahat);
+    masked_poly_add(&bhat, &ehat, &ahat_shat);
 
-    poly_tobytes(sk, &shat);
-    encode_pk(pk, &bhat, publicseed);
+    masked_poly_tobytes(sk, &shat);
+
+    // Since bhat is the public key we can recombine it at this point, since we don't care to keep it secret
+    poly bhat_recomb;
+    recombine(&bhat_recomb, &bhat);
+    encode_pk(pk, &bhat_recomb, publicseed);
 }
 
-void masked_cpapke_enc(unsigned char *c, const unsigned char *m, const unsigned char *pk, const unsigned char *coins){
 
+void masked_cpapke_enc(unsigned char *c, const unsigned char *m, const unsigned char *pk, const unsigned char *coin){
+    poly ahat, bhat, uhat_recomb, vprime_recomb;
+    masked_poly sprime, eprime, vprime, eprimeprime, v, uhat;
+    unsigned char publicseed[NEWHOPE_SYMBYTES];
+
+    masked_poly_frommsg(&v, m);
+
+    decode_pk(&bhat, publicseed, pk);
+    gen_a(&ahat, publicseed);
+
+    masked_sample(&sprime, coin, 0);
+    masked_sample(&eprime, coin, 1);
+    masked_sample(&eprimeprime, coin, 2);
+
+    NTT_masked_poly(&sprime);
+    NTT_masked_poly(&eprime);
+
+    masked_poly_mul(&uhat, &sprime, &ahat);
+    masked_poly_add(&uhat, &uhat, &eprime);
+
+    masked_poly_mul(&vprime, &sprime, &bhat);
+    reverse_NTT_masked_poly(&vprime);
+
+    masked_poly_add(&vprime, &vprime, &eprimeprime);
+    masked_poly_add(&vprime, &vprime, &v); // add message
+
+    // At this point the ciphertext is finished and, at least for the CPA, we don't care to keep the ciphertext in shared form.
+    recombine(&uhat_recomb, &uhat);
+    recombine(&vprime_recomb, &vprime);
+
+    encode_c(c, &uhat_recomb, &vprime_recomb);
 }
 
 void masked_cpapke_dec(unsigned char *m, const unsigned char *c, const unsigned char *sk){
+    poly vprime, uhat, tmp_recomb;
+    masked_poly shat, tmp;
 
-}*/
+    // Secret key should still be masked here
+    masked_poly_frombytes(&shat, sk);
+
+    decode_c(&uhat, &vprime, c);
+    masked_poly_mul(&tmp, &shat, &uhat);
+    reverse_NTT_masked_poly(&tmp);
+
+    masked_poly_sub(&tmp, &tmp, &vprime);
+
+    //TODO: Recombine should be done after tomsg, figure out how to perform tomsg on a masked poly.
+    recombine(&tmp_recomb, &tmp);
+    poly_tomsg(m, &tmp_recomb);
+}
