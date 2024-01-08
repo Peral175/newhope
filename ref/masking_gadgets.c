@@ -275,7 +275,7 @@ void zeroTestExpoShares(Masked* B, Masked* A){
         B->shares[j] = NEWHOPE_Q - tmp.shares[j] % NEWHOPE_Q;
     }
 } //algo 19
-int polyZeroTestExpo(int K,  Masked (*X)[16], Masked (*Y)[10]){
+/*int polyZeroTestExpo(int K,  Masked (*X)[16], Masked (*Y)[10]){
     polyZeroTestRed(K,(*X),(*Y));
     Masked B,C;
     zeroTestExpoShares(&B,&(*Y)[0]);
@@ -295,7 +295,7 @@ int polyZeroTestExpo(int K,  Masked (*X)[16], Masked (*Y)[10]){
     } else {
         return 0;
     }
-} //algo 25
+} //algo 25*/
 void masked_Hamming_Weight(Masked* a, Masked* x, int k){
     for(int i = 0; i <= MASKING_ORDER; i++){
         a->shares[i] = 0;
@@ -331,7 +331,7 @@ void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
     arith_refresh(a);
 }
 
-int main(int argc, char *argv[]) {
+/*int main(int argc, char *argv[]) {
 //    if (argc != 2){
 //    	return -1;
 //    }
@@ -489,8 +489,8 @@ int main(int argc, char *argv[]) {
     }
     printf("A: %d \n", A % NEWHOPE_Q);
     printf("B: %d \n", B % NEWHOPE_Q);
-    */
-    /**/
+
+
     // Algorithm 25 test!
     // we need 10 coefficients at least?
     Masked X[16];
@@ -502,4 +502,4 @@ int main(int argc, char *argv[]) {
     Masked Y[10];
     int bool = polyZeroTestExpo(10, &X, &Y);
     printf("bool: %d \n", bool);
-}
+}*/
