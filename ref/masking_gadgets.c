@@ -254,15 +254,15 @@ void secExpo(Masked* B, Masked* A, int e){
     }
 }
 
-void polyZeroTestRed(int K, Masked* X,  Masked* Y){
+void polyZeroTestRed(int K, Masked (*X)[16], Masked (*Y)[10]){
     for (int k=0; k<K;k++){
         for (int i=0; i<=MASKING_ORDER;i++){
-            Y[k].shares[i] = 0;
+            (*Y)[k].shares[i] = 0;
         }
         for (int j=0;j<16;j++){
             uint16_t a = random16mod();
             for (int i=0;i<=MASKING_ORDER;i++){
-                Y[k].shares[i] = Y[k].shares[i] + (a * X[j].shares[i]);
+                (*Y)[k].shares[i] = (*Y)[k].shares[i] + (a * (*X)[j].shares[i])%NEWHOPE_Q;
             }
         }
     }
@@ -275,22 +275,22 @@ void zeroTestExpoShares(Masked* B, Masked* A){
         B->shares[j] = NEWHOPE_Q - tmp.shares[j] % NEWHOPE_Q;
     }
 } //algo 19
-int polyZeroTestExpo(int K, Masked* X, Masked* Y){
-    polyZeroTestRed(K,X,Y);
+int polyZeroTestExpo(int K,  Masked (*X)[16], Masked (*Y)[10]){
+    polyZeroTestRed(K,(*X),(*Y));
     Masked B,C;
-    zeroTestExpoShares(&B,&Y[0]);
+    zeroTestExpoShares(&B,&(*Y)[0]);
     for (int j=1;j<K;j++){
         Masked tmp;
-        zeroTestExpoShares(&C,&Y[j]);
+        zeroTestExpoShares(&C,&(*Y)[j]);
         secMult(&tmp,&B,&C);
         B = tmp;
     }
     refreshMasks(&C,&B);
     int b=0;
     for (int m=0;m<=MASKING_ORDER;m++){
-        b += C.shares[m] %NEWHOPE_Q;
+        b = (b + C.shares[m]) %NEWHOPE_Q;
     }
-    if (b == 1){
+    if (b == 1){    // shouldnt this be reversed?
         return 1;
     } else {
         return 0;
@@ -458,7 +458,7 @@ int main(int argc, char *argv[]) {
     printf("Y should be : %d \n", (int) pow(X1,eee) % NEWHOPE_Q);
     printf("Y: %d \n", Y1 % NEWHOPE_Q);
     */
-    /* todo: test
+    /*
     // Algorithm 23 test!
     Masked v,w,x,y;
     basic_gen_shares_mod(&v);
@@ -491,23 +491,15 @@ int main(int argc, char *argv[]) {
     printf("B: %d \n", B % NEWHOPE_Q);
     */
     /**/
-    // todo: test
     // Algorithm 25 test!
-    Masked v,w,x,y;
-    basic_gen_shares_mod(&v);
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("v Share %d: %d \n", i, v.shares[i]);
+    // we need 10 coefficients at least?
+    Masked X[16];
+    for (int i=0;i<16;i++) {
+        for (int j = 0; j <= MASKING_ORDER; j++) {
+            X[i].shares[j] = i;
+        }
     }
-    w = v;
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("w Share %d: %d \n", i, w.shares[i]);
-    }
-
-//    basic_gen_shares_mod(&w);
-//    Masked arr1[] = {v, w};
-//    basic_gen_shares_mod(&x);
-//    basic_gen_shares_mod(&y);
-//    Masked arr2[] = {x, y};
-//    int bool = polyZeroTestExpo(1,arr1,arr2);
-//    printf("bool: %d \n", bool);
+    Masked Y[10];
+    int bool = polyZeroTestExpo(10, &X, &Y);
+    printf("bool: %d \n", bool);
 }
