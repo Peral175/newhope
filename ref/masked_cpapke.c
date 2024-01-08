@@ -94,37 +94,38 @@ void recombine(poly *r, const masked_poly *a){
 // Transform masked polynomial into byte array
 void masked_poly_tobytes(unsigned char *r, const masked_poly *p){
     for(int i = 0; i <= MASKING_ORDER; i++){
-        poly_tobytes(r+(NEWHOPE_CPAPKE_PUBLICKEYBYTES*i), &(p->poly_shares[i]));
+        poly_tobytes(r+(NEWHOPE_CPAPKE_SECRETKEYBYTES*i), &(p->poly_shares[i]));
     }
 }
 
 // Transform byte array into masked polynomial
 void masked_poly_frombytes(masked_poly *r, const unsigned char *a){
     for(int i = 0; i <= MASKING_ORDER; i++){
-        poly_frombytes(&(r->poly_shares[i]), a+(NEWHOPE_CPAPKE_PUBLICKEYBYTES*i));
+        poly_frombytes(&(r->poly_shares[i]), a+(NEWHOPE_CPAPKE_SECRETKEYBYTES*i));
     }
 }
 
-// Get a polynomial from a (MASKING_ORDER+1)*32 Byte masked message. Assuming every 32 bytes represent 1 share of the message.
+// Get a polynomial from a (MASKING_ORDER+1)*32 Byte masked message.
+// Assuming every 32 bytes represent 1 share of the message and that it is in boolean masked form.
 void masked_poly_frommsg(masked_poly *r, const unsigned char *msg){
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        poly_frommsg(&(r->poly_shares[i]), msg+(32*i));
-    }
-}
-
-// Copied from the kyber implementation, gotta check more
-void test_from_message(const uint8_t m[(NEWHOPE_N/8)*(MASKING_ORDER+1)], masked_poly* y){
-    /* m is a boolean masking of the message*/
-    Masked t1,t2;
-    for(int i=0; i < NEWHOPE_N/8; ++i){
-        for(int j=0; j < 8; ++j){
-            for(int k=0; k < MASKING_ORDER+1; ++k){
-                t1.shares[k] = (m[i+k*(NEWHOPE_N/8)]>>j)&1;
+    Masked temp1;
+    Masked temp2;
+    for(int i=0;i<32;i++) // XXX: MACRO for 32
+    {
+        for(int j=0;j<8;j++)
+        {
+            for(int k=0; k <= MASKING_ORDER; k ++){
+                temp1.shares[k] = (-((msg[i+k*(NEWHOPE_SYMBYTES)] >> j)&1)) & (NEWHOPE_Q/2);
             }
-            opti_B2A(&t1, &t2, 1);
+            opti_B2A(&temp2, &temp1, 16);
 
-            for(int k=0; k < MASKING_ORDER+1; ++k){
-                (y->poly_shares[k]).coeffs[i*8+j] = (t2.shares[k]*((NEWHOPE_Q+1)/2))%NEWHOPE_Q;
+            for(int k=0; k <= MASKING_ORDER; k ++) {
+                r->poly_shares[k].coeffs[8 * i + j + 0] = temp2.shares[k];
+                r->poly_shares[k].coeffs[8 * i + j + 256] = temp2.shares[k];
+#if (NEWHOPE_N == 1024)
+                r->poly_shares[k].coeffs[8 * i + j + 512] = temp2.shares[k];
+                r->poly_shares[k].coeffs[8 * i + j + 768] = temp2.shares[k];
+#endif
             }
         }
     }
