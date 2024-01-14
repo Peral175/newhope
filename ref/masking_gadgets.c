@@ -217,7 +217,6 @@ void refreshMasks(Masked* c, Masked* a){
         }
     }
 }  //algo 12
-
 /*
  * This function implements the algorithm 18 SecExpo
  * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
@@ -226,11 +225,6 @@ void refreshMasks(Masked* c, Masked* a){
  *      Masked* e: exponent
  *      Masked* z: output of operation
  **/
-/*
-double Log2(double n){
-    return log(n)/log(2)
-}
-*/
 void secExpo(Masked* B, Masked* A, int e){
     B->shares[0] = 1;
     for (int j=1;j<=MASKING_ORDER;j++){
@@ -253,16 +247,17 @@ void secExpo(Masked* B, Masked* A, int e){
         }
     }
 }
-
-void polyZeroTestRed(int K, Masked (*X)[16], Masked (*Y)[10]){
+//todo: test
+void polyZeroTestRed(int K, int size, Masked X[size], Masked Y[]){
     for (int k=0; k<K;k++){
         for (int i=0; i<=MASKING_ORDER;i++){
-            (*Y)[k].shares[i] = 0;
+            Y[k].shares[i] = 0;
         }
-        for (int j=0;j<16;j++){
+        for (int j=0;j<size;j++){
             uint16_t a = random16mod();
             for (int i=0;i<=MASKING_ORDER;i++){
-                (*Y)[k].shares[i] = (*Y)[k].shares[i] + (a * (*X)[j].shares[i])%NEWHOPE_Q;
+                uint64_t r = (a * X[j].shares[i])%NEWHOPE_Q;
+                Y[k].shares[i] = (Y[k].shares[i] + r)%NEWHOPE_Q;
             }
         }
     }
@@ -275,13 +270,13 @@ void zeroTestExpoShares(Masked* B, Masked* A){
         B->shares[j] = NEWHOPE_Q - tmp.shares[j] % NEWHOPE_Q;
     }
 } //algo 19
-int polyZeroTestExpo(int K,  Masked (*X)[16], Masked (*Y)[10]){
-    polyZeroTestRed(K,(*X),(*Y));
+int polyZeroTestExpo(int K,  int L, Masked X[L], Masked Y[K]){
+    polyZeroTestRed(K,L,X,Y);
     Masked B,C;
-    zeroTestExpoShares(&B,&(*Y)[0]);
+    zeroTestExpoShares(&B,&Y[0]);
     for (int j=1;j<K;j++){
         Masked tmp;
-        zeroTestExpoShares(&C,&(*Y)[j]);
+        zeroTestExpoShares(&C,&Y[j]);
         secMult(&tmp,&B,&C);
         B = tmp;
     }
@@ -290,7 +285,7 @@ int polyZeroTestExpo(int K,  Masked (*X)[16], Masked (*Y)[10]){
     for (int m=0;m<=MASKING_ORDER;m++){
         b = (b + C.shares[m]) %NEWHOPE_Q;
     }
-    if (b == 1){    // shouldnt this be reversed?
+    if (b == 1){
         return 1;
     } else {
         return 0;
@@ -458,48 +453,130 @@ int main(int argc, char *argv[]) {
     printf("Y should be : %d \n", (int) pow(X1,eee) % NEWHOPE_Q);
     printf("Y: %d \n", Y1 % NEWHOPE_Q);
     */
-    /*
-    // Algorithm 23 test!
-    Masked v,w,x,y;
-    basic_gen_shares_mod(&v);
-    basic_gen_shares_mod(&w);
-    Masked arr1[] = {v, w};
-    basic_gen_shares_mod(&x);
-    basic_gen_shares_mod(&y);
-    Masked arr2[] = {x, y};
-    polyZeroTestRed(1,arr1,arr2);
-     */
-    /*
-    // Algorithm 19 test!
-    Masked a,b;
-    uint16_t A;
-    a.shares[0]=0;
-    a.shares[1]=0;
-    a.shares[2]=0;
-    a.shares[3]=0;
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("x Share %d: %d \n", i, a.shares[i]);
-        A += a.shares[i];
-    }
-    zeroTestExpoShares(&b,&a);
-    uint16_t B;
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("x Share %d: %d \n", i, b.shares[i]);
-        B += b.shares[i];
-    }
-    printf("A: %d \n", A % NEWHOPE_Q);
-    printf("B: %d \n", B % NEWHOPE_Q);
-    */
-    /**/
+
+//    // Algorithm 23 test!
+//    Masked v,w,x;
+//    basic_gen_shares_mod(&v);
+//    basic_gen_shares_mod(&w);
+//    Masked arr1[] = {v, w};
+//    Masked arr2[] = {x};
+//    int size,k;
+//    k = 1;
+//    size = sizeof(arr1) / sizeof(arr1[0]);
+//    polyZeroTestRed(k, size, arr1, arr2);
+
+//    // Algorithm 19 test!
+//    Masked a,b;
+//    uint16_t A;
+//    a.shares[0]=0;
+//    a.shares[1]=0;
+//    a.shares[2]=0;
+//    a.shares[3]=0;
+//    for(int i = 0; i <= MASKING_ORDER; i++){
+//        printf("x Share %d: %d \n", i, a.shares[i]);
+//        A += a.shares[i];
+//    }
+//    zeroTestExpoShares(&b,&a);
+//    uint16_t B;
+//    for(int i = 0; i <= MASKING_ORDER; i++){
+//        printf("y Share %d: %d \n", i, b.shares[i]);
+//        B += b.shares[i];
+//    }
+//    printf("A: %d \n", A % NEWHOPE_Q);
+//    printf("B: %d \n", B % NEWHOPE_Q);
+
     // Algorithm 25 test!
     // we need 10 coefficients at least?
     Masked X[16];
-    for (int i=0;i<16;i++) {
-        for (int j = 0; j <= MASKING_ORDER; j++) {
-            X[i].shares[j] = i;
-        }
-    }
+//    for (int i=0;i<16;i++) {
+//        for (int j = 0; j <= MASKING_ORDER; j++) {
+//            X[i].shares[j] = 0;
+//        }
+//    }
+    // sum of shares for each coeff must be 0
+    X[0].shares[0] = 1;
+    X[0].shares[1] = 1;
+    X[0].shares[2] = 1;
+    X[0].shares[3] = 12286;
+
+    X[1].shares[0] = 4000;
+    X[1].shares[1] = 4000;
+    X[1].shares[2] = 4000;
+    X[1].shares[3] = 289;
+
+    X[2].shares[0] = 0;
+    X[2].shares[1] = 0;
+    X[2].shares[2] = 0;
+    X[2].shares[3] = 0;
+
+    X[3].shares[0] = 0;
+    X[3].shares[1] = 0;
+    X[3].shares[2] = 0;
+    X[3].shares[3] = 0;
+
+    X[4].shares[0] = 0;
+    X[4].shares[1] = 0;
+    X[4].shares[2] = 0;
+    X[4].shares[3] = 0;
+
+    X[5].shares[0] = 0;
+    X[5].shares[1] = 0;
+    X[5].shares[2] = 0;
+    X[5].shares[3] = 0;
+
+    X[6].shares[0] = 0;
+    X[6].shares[1] = 0;
+    X[6].shares[2] = 0;
+    X[6].shares[3] = 0;
+
+    X[7].shares[0] = 0;
+    X[7].shares[1] = 0;
+    X[7].shares[2] = 0;
+    X[7].shares[3] = 0;
+
+    X[8].shares[0] = 0;
+    X[8].shares[1] = 0;
+    X[8].shares[2] = 0;
+    X[8].shares[3] = 0;
+
+    X[9].shares[0] = 0;
+    X[9].shares[1] = 0;
+    X[9].shares[2] = 0;
+    X[9].shares[3] = 0;
+
+    X[10].shares[0] = 0;
+    X[10].shares[1] = 0;
+    X[10].shares[2] = 0;
+    X[10].shares[3] = 0;
+
+    X[11].shares[0] = 0;
+    X[11].shares[1] = 0;
+    X[11].shares[2] = 0;
+    X[11].shares[3] = 0;
+
+    X[12].shares[0] = 0;
+    X[12].shares[1] = 0;
+    X[12].shares[2] = 0;
+    X[12].shares[3] = 0;
+
+    X[13].shares[0] = 0;
+    X[13].shares[1] = 0;
+    X[13].shares[2] = 0;
+    X[13].shares[3] = 0;
+
+    X[14].shares[0] = 0;
+    X[14].shares[1] = 0;
+    X[14].shares[2] = 0;
+    X[14].shares[3] = 0;
+
+    X[15].shares[0] = 0;
+    X[15].shares[1] = 0;
+    X[15].shares[2] = 0;
+    X[15].shares[3] = 0;
+
     Masked Y[10];
-    int bool = polyZeroTestExpo(10, &X, &Y);
+    int k = 10;
+    int l = 16;
+    int bool = polyZeroTestExpo(k,l, X, Y);
     printf("bool: %d \n", bool);
 }
