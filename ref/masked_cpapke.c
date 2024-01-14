@@ -3,6 +3,7 @@
 #include "randombytes.h"
 #include "fips202.h"
 #include "masking_gadgets.h"
+#include <stdio.h>
 
 // Copied from cpapke.c
 static void encode_pk(unsigned char *r, const poly *pk, const unsigned char *seed)
@@ -42,38 +43,36 @@ static void gen_a(poly *a, const unsigned char *seed)
     poly_uniform(a,seed);
 }
 
-//TODO: Make these functions static
-
 // Applying the NTT to every share of a polynomial
-void NTT_masked_poly(masked_poly *a){
+static void NTT_masked_poly(masked_poly *a){
     for(int i = 0; i <= MASKING_ORDER; i++){
         poly_ntt(&(a->poly_shares[i]));
     }
 }
 
 // Applying the reverse NTT to every share of a polynomial
-void reverse_NTT_masked_poly(masked_poly *a){
+static void reverse_NTT_masked_poly(masked_poly *a){
     for(int i = 0; i <= MASKING_ORDER; i++){
         poly_invntt(&(a->poly_shares[i]));
     }
 }
 
 // Multiply a masked poly with a non-masked polynomial, both in the NTT domain
-void masked_poly_mul(masked_poly *r, const masked_poly *a, const poly *b){
+static void masked_poly_mul(masked_poly *r, const masked_poly *a, const poly *b){
     for(int i = 0; i <= MASKING_ORDER; i++){
         poly_mul_pointwise(&r->poly_shares[i], &a->poly_shares[i], b);
     }
 }
 
 // Addition of two masked polynomials
-void masked_poly_add(masked_poly *r, const masked_poly *a, const masked_poly *b){
+static void masked_poly_add(masked_poly *r, const masked_poly *a, const masked_poly *b){
     for(int i = 0; i <= MASKING_ORDER; i++){
         poly_add(&r->poly_shares[i], &a->poly_shares[i], &b->poly_shares[i]);
     }
 }
 
 // Substraction of an unmasked polynomial from a masked one
-void masked_poly_sub(masked_poly *r, const masked_poly *a, const poly *b){
+static void masked_poly_sub(masked_poly *r, const masked_poly *a, const poly *b){
     poly_sub(&r->poly_shares[0], &a->poly_shares[0], b);
     for(int i = 1; i <= MASKING_ORDER; i++){
         r->poly_shares[i] = a->poly_shares[i];
@@ -81,7 +80,7 @@ void masked_poly_sub(masked_poly *r, const masked_poly *a, const poly *b){
 }
 
 // Recombine the shares of a (arithmetically) masked polynomial into the polynomial
-void recombine(poly *r, const masked_poly *a){
+static void recombine(poly *r, const masked_poly *a){
     for(int i = 0; i<NEWHOPE_N; i++){
         uint16_t coeff_i = 0;
         for(int j = 0; j <= MASKING_ORDER; j++){
@@ -92,14 +91,14 @@ void recombine(poly *r, const masked_poly *a){
 }
 
 // Transform masked polynomial into byte array
-void masked_poly_tobytes(unsigned char *r, const masked_poly *p){
+static void masked_poly_tobytes(unsigned char *r, const masked_poly *p){
     for(int i = 0; i <= MASKING_ORDER; i++){
         poly_tobytes(r+(NEWHOPE_CPAPKE_SECRETKEYBYTES*i), &(p->poly_shares[i]));
     }
 }
 
 // Transform byte array into masked polynomial
-void masked_poly_frombytes(masked_poly *r, const unsigned char *a){
+static void masked_poly_frombytes(masked_poly *r, const unsigned char *a){
     for(int i = 0; i <= MASKING_ORDER; i++){
         poly_frombytes(&(r->poly_shares[i]), a+(NEWHOPE_CPAPKE_SECRETKEYBYTES*i));
     }
@@ -107,7 +106,7 @@ void masked_poly_frombytes(masked_poly *r, const unsigned char *a){
 
 // Get a polynomial from a (MASKING_ORDER+1)*32 Byte masked message.
 // Assuming every 32 bytes represent 1 share of the message and that it is in boolean masked form.
-void masked_poly_frommsg(masked_poly *r, const unsigned char *msg){
+static void masked_poly_frommsg(masked_poly *r, const unsigned char *msg){
     Masked temp1;
     Masked temp2;
     for(int i=0;i<32;i++) // XXX: MACRO for 32
@@ -130,7 +129,6 @@ void masked_poly_frommsg(masked_poly *r, const unsigned char *msg){
         }
     }
 }
-
 
 void masked_sample(masked_poly *r, const unsigned char *seed, unsigned char nonce){
 #if NEWHOPE_K != 8
@@ -242,7 +240,7 @@ void masked_cpapke_dec(unsigned char *m, const unsigned char *c, const unsigned 
 
     masked_poly_sub(&tmp, &tmp, &vprime);
 
-    //TODO: Recombine should be done after tomsg, figure out how to perform tomsg on a masked poly.
+    //TODO: Recombine should be done after tomsg, figure out how to perform tomsg on a masked polynomial.
     recombine(&tmp_recomb, &tmp);
     poly_tomsg(m, &tmp_recomb);
 }
