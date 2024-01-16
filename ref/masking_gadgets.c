@@ -4,8 +4,19 @@
 #include <math.h>
 #include <time.h>  // Take out later probably
 #include "masking_gadgets.h"
+#include "poly.h"
 
 #define NEWHOPE_Q 12289
+
+typedef struct {
+    uint16_t coeffs[8];
+} short_poly __attribute__ ((aligned (8)));
+
+
+typedef struct {
+    short_poly poly_shares[MASKING_ORDER+1];
+} masked_short_poly;
+
 
 // Need one more share than the order we want to have.
 //typedef struct Masked {uint16_t shares[MASKING_ORDER+1];} Masked;
@@ -248,16 +259,16 @@ void secExpo(Masked* B, Masked* A, int e){
     }
 }
 //todo: test
-void polyZeroTestRed(int K, int size, Masked X[size], Masked Y[]){
+void polyZeroTestRed(int K, int size, masked_poly X[size], masked_short_poly Y[K]){
     for (int k=0; k<K;k++){
         for (int i=0; i<=MASKING_ORDER;i++){
-            Y[k].shares[i] = 0;
+            Y->poly_shares[i].coeffs[k] = 0;
         }
         for (int j=0;j<size;j++){
             uint16_t a = random16mod();
             for (int i=0;i<=MASKING_ORDER;i++){
-                uint64_t r = (a * X[j].shares[i])%NEWHOPE_Q;
-                Y[k].shares[i] = (Y[k].shares[i] + r)%NEWHOPE_Q;
+                uint64_t r = (a * X->poly_shares[i].coeffs[j])%NEWHOPE_Q;
+                Y->poly_shares[i].coeffs[k] = (Y->poly_shares[i].coeffs[k] + r)%NEWHOPE_Q;
             }
         }
     }
@@ -270,13 +281,19 @@ void zeroTestExpoShares(Masked* B, Masked* A){
         B->shares[j] = NEWHOPE_Q - tmp.shares[j] % NEWHOPE_Q;
     }
 } //algo 19
-int polyZeroTestExpo(int K,  int L, Masked X[L], Masked Y[K]){
+int polyZeroTestExpo(int K,  int L, masked_poly X[L], masked_short_poly Y[K]){
     polyZeroTestRed(K,L,X,Y);
-    Masked B,C;
-    zeroTestExpoShares(&B,&Y[0]);
+    Masked B,C,G;
+    for (int m=0;m<=MASKING_ORDER;m++){
+        G.shares[m] = Y->poly_shares[m].coeffs[0];
+    }
+    zeroTestExpoShares(&B,&G);
     for (int j=1;j<K;j++){
-        Masked tmp;
-        zeroTestExpoShares(&C,&Y[j]);
+        Masked tmp,H;
+        for (int m=0;m<=MASKING_ORDER;m++){
+            H.shares[m] = Y->poly_shares[m].coeffs[j];
+        }
+        zeroTestExpoShares(&C,&H);
         secMult(&tmp,&B,&C);
         B = tmp;
     }
@@ -486,97 +503,16 @@ int main(int argc, char *argv[]) {
 //    printf("B: %d \n", B % NEWHOPE_Q);
 
     // Algorithm 25 test!
-    // we need 10 coefficients at least?
-    Masked X[16];
-//    for (int i=0;i<16;i++) {
-//        for (int j = 0; j <= MASKING_ORDER; j++) {
-//            X[i].shares[j] = 0;
-//        }
-//    }
-    // sum of shares for each coeff must be 0
-    X[0].shares[0] = 1;
-    X[0].shares[1] = 1;
-    X[0].shares[2] = 1;
-    X[0].shares[3] = 12286;
+    masked_poly X;
+    for (int i=0;i<1024;i++) {
+        for (int j = 0; j <= MASKING_ORDER; j++) {
+            X.poly_shares[j].coeffs[i] = 0;
+        }
+    }
 
-    X[1].shares[0] = 4000;
-    X[1].shares[1] = 4000;
-    X[1].shares[2] = 4000;
-    X[1].shares[3] = 289;
-
-    X[2].shares[0] = 0;
-    X[2].shares[1] = 0;
-    X[2].shares[2] = 0;
-    X[2].shares[3] = 0;
-
-    X[3].shares[0] = 0;
-    X[3].shares[1] = 0;
-    X[3].shares[2] = 0;
-    X[3].shares[3] = 0;
-
-    X[4].shares[0] = 0;
-    X[4].shares[1] = 0;
-    X[4].shares[2] = 0;
-    X[4].shares[3] = 0;
-
-    X[5].shares[0] = 0;
-    X[5].shares[1] = 0;
-    X[5].shares[2] = 0;
-    X[5].shares[3] = 0;
-
-    X[6].shares[0] = 0;
-    X[6].shares[1] = 0;
-    X[6].shares[2] = 0;
-    X[6].shares[3] = 0;
-
-    X[7].shares[0] = 0;
-    X[7].shares[1] = 0;
-    X[7].shares[2] = 0;
-    X[7].shares[3] = 0;
-
-    X[8].shares[0] = 0;
-    X[8].shares[1] = 0;
-    X[8].shares[2] = 0;
-    X[8].shares[3] = 0;
-
-    X[9].shares[0] = 0;
-    X[9].shares[1] = 0;
-    X[9].shares[2] = 0;
-    X[9].shares[3] = 0;
-
-    X[10].shares[0] = 0;
-    X[10].shares[1] = 0;
-    X[10].shares[2] = 0;
-    X[10].shares[3] = 0;
-
-    X[11].shares[0] = 0;
-    X[11].shares[1] = 0;
-    X[11].shares[2] = 0;
-    X[11].shares[3] = 0;
-
-    X[12].shares[0] = 0;
-    X[12].shares[1] = 0;
-    X[12].shares[2] = 0;
-    X[12].shares[3] = 0;
-
-    X[13].shares[0] = 0;
-    X[13].shares[1] = 0;
-    X[13].shares[2] = 0;
-    X[13].shares[3] = 0;
-
-    X[14].shares[0] = 0;
-    X[14].shares[1] = 0;
-    X[14].shares[2] = 0;
-    X[14].shares[3] = 0;
-
-    X[15].shares[0] = 0;
-    X[15].shares[1] = 0;
-    X[15].shares[2] = 0;
-    X[15].shares[3] = 0;
-
-    Masked Y[10];
-    int k = 10;
-    int l = 16;
-    int bool = polyZeroTestExpo(k,l, X, Y);
+    masked_short_poly Y;
+    int k = 8;
+    int l = 1024;
+    int bool = polyZeroTestExpo(k,l, &X, &Y);
     printf("bool: %d \n", bool);
 }
