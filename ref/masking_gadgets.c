@@ -171,14 +171,14 @@ void A2B(Masked* y, Masked* x){
  *      Masked* b: second operand
  *      Masked* z: output of operation
  **/
-void secAnd(Masked* z, Masked* a, Masked* b){
+void secAnd(Masked* z, Masked* a, Masked* b, int k){
     for (int i=0; i<=MASKING_ORDER;i++){
         z->shares[i] = a->shares[i] & b->shares[i];
     }
     for (int i=0; i<=MASKING_ORDER;i++){
         for (int j=i+1; j<=MASKING_ORDER;j++){
             uint16_t r,r_p;
-            r = random16();
+            r = random16() >> (16 - k);
             r_p = (r ^ (a->shares[i] & b->shares[j])) ^ (a->shares[j] & b->shares[i]);
             z->shares[i] ^= r;
             z->shares[j] ^= r_p;
@@ -343,7 +343,89 @@ void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
     arith_refresh(a);
 }
 
-int main(int argc, char *argv[]) {
+// Take boolean shares x, y, z, each 1 bit size, and calculate x+y+z;
+// Taken from paper "Bitslicing Arithmetic/Boolean Masking Conversions for Fun and Profit with Application to Lattice-Based KEMs"
+void fullAdder(Masked* w, Masked* x, Masked* y, Masked* z){
+    Masked a;
+    Masked temp;
+    Masked temp2;
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        a.shares[i] = x->shares[i] ^ y->shares[i];
+        w->shares[i] = z->shares[i] ^ a.shares[i];
+        temp2.shares[i] = z->shares[i] ^ x->shares[i];
+    }
+
+    secAnd(&temp, &a, &temp2, 1);
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        w->shares[i] ^= (x->shares[i] ^ temp.shares[i]) << 1;
+    }
+}
+
+// Take boolean shares x, y, with x and y between 0 and 2^16. Output boolean shared z = x+y mod 2^16
+// Taken from paper "Bitslicing Arithmetic/Boolean Masking Conversions for Fun and Profit with Application to Lattice-Based KEMs"
+void SecAdd(CompMasked* z, CompMasked* x, CompMasked* y, int k){
+    Masked c;
+    Masked t;
+    Masked temp;
+    Masked temp2;
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        c.shares[i] = 0;
+        z->shares[i] = 0;
+    }
+
+    for(int i = 0; i <= k-2; i++){
+        for(int j = 0; j <= MASKING_ORDER; j++){
+            temp.shares[j] = (x->shares[j] >> i) & 1;
+            temp2.shares[j] = (y->shares[j] >> i) & 1;
+        }
+
+        fullAdder(&t, &temp, &temp2, &c);
+
+        for(int j = 0; j <= MASKING_ORDER; j++) {
+            z->shares[j] ^= (t.shares[j] & 1) << i;
+            c.shares[j] &= 0;
+            c.shares[j] ^= (t.shares[j] >> 1) & 1;
+        }
+    }
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        temp.shares[i] = (x->shares[i] >> (k-1)) & 1;
+        temp2.shares[i] = (y->shares[i] >> (k-1)) & 1;
+    }
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        z->shares[i] ^= (temp.shares[i] ^ temp2.shares[i] ^ c.shares[i]) << (k-1);
+    }
+}
+
+// Take boolean shared value x and check if it is smaller or equal to phi
+// Taken from paper "Protecting Dilithium against Leakage Revisited Sensitivity Analysis and Improved Implementations"
+void SecLeq_masked_res(Masked* res, Masked* x, int phi, int k){
+    int t;
+    CompMasked temp;
+    CompMasked temp2;
+    CompMasked tx;
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        res->shares[i] = 0;
+        temp2.shares[i] = 0;
+        tx.shares[i] = x->shares[i];
+    }
+    t = pow(2, k+1);
+
+    temp2.shares[0] = t - phi - 1;
+
+    SecAdd(&temp, &tx, &temp2, k+1);
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        res->shares[i] ^= (temp.shares[i] >> k) & 1;
+    }
+}
+
+/*int main(int argc, char *argv[]) {
 //    if (argc != 2){
 //    	return -1;
 //    }
@@ -469,7 +551,7 @@ int main(int argc, char *argv[]) {
     }
     printf("Y should be : %d \n", (int) pow(X1,eee) % NEWHOPE_Q);
     printf("Y: %d \n", Y1 % NEWHOPE_Q);
-    */
+
 
 //    // Algorithm 23 test!
 //    Masked v,w,x;
@@ -515,4 +597,4 @@ int main(int argc, char *argv[]) {
     int l = 1024;
     int bool = polyZeroTestExpo(k,l, &X, &Y);
     printf("bool: %d \n", bool);
-}
+}*/
