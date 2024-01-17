@@ -17,7 +17,8 @@ int main(int argc, char *argv[]){
     unsigned char c[NEWHOPE_CPAPKE_CIPHERTEXTBYTES];
     unsigned char m[NEWHOPE_SYMBYTES * (MASKING_ORDER+1)];
     unsigned char m_combined[NEWHOPE_SYMBYTES];
-    unsigned char m_dec[NEWHOPE_SYMBYTES];
+    unsigned char m_dec[NEWHOPE_SYMBYTES * (MASKING_ORDER+1)];
+    unsigned char m_dec_combined[NEWHOPE_SYMBYTES];
     unsigned char coin[NEWHOPE_SYMBYTES];
 
     randombytes(m,NEWHOPE_SYMBYTES * (MASKING_ORDER+1));
@@ -39,7 +40,13 @@ int main(int argc, char *argv[]){
 
     masked_cpapke_dec(m_dec, c, sk);
 
+    for(int i = 0; i < 32; i++){
+        for(int j = 0; j <= MASKING_ORDER; j++){
+            m_dec_combined[i] ^= m_dec[i + (j*NEWHOPE_SYMBYTES)];
+        }
+    }
+
     for(int i = 0; i<32; i++){
-        printf("Message index %d, Before: %d, After dec: %d \n", i, m_combined[i], m_dec[i]);
+        printf("Message index %d, Before: %d, After dec: %d \n", i, m_combined[i], m_dec_combined[i]);
     }
 }

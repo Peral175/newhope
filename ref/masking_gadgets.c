@@ -8,6 +8,7 @@
 
 #define NEWHOPE_Q 12289
 
+
 typedef struct {
     uint16_t coeffs[8];
 } short_poly __attribute__ ((aligned (8)));
@@ -28,17 +29,20 @@ uint16_t random16(){
     return x;
 }
 
+
 uint16_t random16mod(){
     //srand(time(NULL));  // Set at start of the new_hope functions later, don't keep it here
     uint16_t x = rand() % NEWHOPE_Q;
     return x;
 }
 
+
 void basic_gen_shares_mod(Masked *x){
     for(int i = 0; i <= MASKING_ORDER; i++) {
         x->shares[i] = random16mod();
     }
 }
+
 
 // Only for testing
 void basic_gen_shares(Masked *x, Masked *y){
@@ -47,6 +51,7 @@ void basic_gen_shares(Masked *x, Masked *y){
         y->shares[i] = random16();
     }
 }
+
 
 // Exchange the c modulos with the modulo function implemented in new hope later
 // From paper "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryptio
@@ -57,6 +62,7 @@ void arith_refresh(Masked* x){
         x->shares[MASKING_ORDER] = (x->shares[MASKING_ORDER] + NEWHOPE_Q - r) % NEWHOPE_Q;
     }
 }
+
 
 /*
  * This function implements the algorithm 9 Refresh
@@ -107,6 +113,7 @@ void B2A(Masked* y, Masked* x, int k){
     arith_refresh(y);
 }
 
+
 // From paper "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryption"
 void opti_B2A(Masked* y, Masked* x, int k){
     for(int i = 0; i <= MASKING_ORDER; i++){
@@ -125,6 +132,7 @@ void opti_B2A(Masked* y, Masked* x, int k){
         }
     }
 }
+
 
 /*
  * This function implements the algorithm 8 ArithmeticToBoolean
@@ -163,6 +171,7 @@ void A2B(Masked* y, Masked* x){
     boolean_refresh(y);
 }
 
+
 /*
  * This function implements the algorithm 11 SecAnd
  * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
@@ -185,6 +194,7 @@ void secAnd(Masked* z, Masked* a, Masked* b, int k){
         }
     }
 }
+
 
 /*
  * This function implements the algorithm 17 SecMult
@@ -209,6 +219,7 @@ void secMult(Masked* z, Masked* a, Masked* b){
     }
 }
 
+
 /*
  * This function implements the algorithm 12 RefreshMasks
  * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
@@ -228,6 +239,8 @@ void refreshMasks(Masked* c, Masked* a){
         }
     }
 }  //algo 12
+
+
 /*
  * This function implements the algorithm 18 SecExpo
  * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
@@ -258,6 +271,8 @@ void secExpo(Masked* B, Masked* A, int e){
         }
     }
 }
+
+
 //todo: test
 void polyZeroTestRed(int K, int size, masked_poly X[size], masked_short_poly Y[K]){
     for (int k=0; k<K;k++){
@@ -273,6 +288,8 @@ void polyZeroTestRed(int K, int size, masked_poly X[size], masked_short_poly Y[K
         }
     }
 }  //algo 23
+
+
 void zeroTestExpoShares(Masked* B, Masked* A){
     Masked tmp;
     secExpo(&tmp,A,NEWHOPE_Q-1);
@@ -281,6 +298,8 @@ void zeroTestExpoShares(Masked* B, Masked* A){
         B->shares[j] = NEWHOPE_Q - tmp.shares[j] % NEWHOPE_Q;
     }
 } //algo 19
+
+
 int polyZeroTestExpo(int K,  int L, masked_poly X[L], masked_short_poly Y[K]){
     polyZeroTestRed(K,L,X,Y);
     Masked B,C,G;
@@ -308,6 +327,8 @@ int polyZeroTestExpo(int K,  int L, masked_poly X[L], masked_short_poly Y[K]){
         return 0;
     }
 } //algo 25
+
+
 void masked_Hamming_Weight(Masked* a, Masked* x, int k){
     for(int i = 0; i <= MASKING_ORDER; i++){
         a->shares[i] = 0;
@@ -343,6 +364,7 @@ void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
     arith_refresh(a);
 }
 
+
 // Take boolean shares x, y, z, each 1 bit size, and calculate x+y+z;
 // Taken from paper "Bitslicing Arithmetic/Boolean Masking Conversions for Fun and Profit with Application to Lattice-Based KEMs"
 void fullAdder(Masked* w, Masked* x, Masked* y, Masked* z){
@@ -362,6 +384,7 @@ void fullAdder(Masked* w, Masked* x, Masked* y, Masked* z){
         w->shares[i] ^= (x->shares[i] ^ temp.shares[i]) << 1;
     }
 }
+
 
 // Take boolean shares x, y, with x and y between 0 and 2^16. Output boolean shared z = x+y mod 2^16
 // Taken from paper "Bitslicing Arithmetic/Boolean Masking Conversions for Fun and Profit with Application to Lattice-Based KEMs"
@@ -401,9 +424,10 @@ void SecAdd(CompMasked* z, CompMasked* x, CompMasked* y, int k){
     }
 }
 
+
 // Take boolean shared value x and check if it is smaller or equal to phi
 // Taken from paper "Protecting Dilithium against Leakage Revisited Sensitivity Analysis and Improved Implementations"
-void SecLeq_masked_res(Masked* res, Masked* x, int phi, int k){
+void SecLeq_masked_res(Masked* res, CompMasked* x, int phi, int k){
     int t;
     CompMasked temp;
     CompMasked temp2;

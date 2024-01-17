@@ -33,5 +33,6 @@ void poly_decompress(poly *r, const unsigned char *a);
 void poly_frommsg(poly *r, const unsigned char *msg);
 void poly_tomsg(unsigned char *msg, const poly *x);
 void poly_sub(poly *r, const poly *a, const poly *b);
+uint16_t flipabs(uint16_t x);
 
 #endif
