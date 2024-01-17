@@ -300,14 +300,7 @@ void zeroTestExpoShares(Masked* B, Masked* A){
 } //algo 19
 
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 int polyZeroTestExpo(int K,  int L, masked_poly X[L], masked_short_poly Y[K]){
-=======
-=======
->>>>>>> Stashed changes
-int polyZeroTestExpo(int K,  int L, Masked X[L], Masked Y[K]){
->>>>>>> Stashed changes
     polyZeroTestRed(K,L,X,Y);
     Masked B,C,G;
     for (int m=0;m<=MASKING_ORDER;m++){
