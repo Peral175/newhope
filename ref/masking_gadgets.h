@@ -15,6 +15,7 @@ void A2B(Masked* y, Masked* x);
 void SecLeq_masked_res(Masked* res, CompMasked* x, int phi, int k);
 int SecLeq_unmasked_res(Masked* x, int phi, int k);
 void SecAdd(CompMasked* z, CompMasked* x, CompMasked* y, int k);
+//void arith_refresh(Masked* x);
 
 
 #endif //NEWHOPE_MASKING_GADGETS_H
