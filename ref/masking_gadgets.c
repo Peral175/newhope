@@ -300,7 +300,14 @@ void zeroTestExpoShares(Masked* B, Masked* A){
 } //algo 19
 
 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 int polyZeroTestExpo(int K,  int L, masked_poly X[L], masked_short_poly Y[K]){
+=======
+=======
+>>>>>>> Stashed changes
+int polyZeroTestExpo(int K,  int L, Masked X[L], Masked Y[K]){
+>>>>>>> Stashed changes
     polyZeroTestRed(K,L,X,Y);
     Masked B,C,G;
     for (int m=0;m<=MASKING_ORDER;m++){
@@ -346,6 +353,7 @@ void masked_Hamming_Weight(Masked* a, Masked* x, int k){
         }
     }
 }
+
 
 void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
     Masked Hx;
@@ -448,6 +456,27 @@ void SecLeq_masked_res(Masked* res, CompMasked* x, int phi, int k){
         res->shares[i] ^= (temp.shares[i] >> k) & 1;
     }
 }
+
+
+// Take boolean shared value x and check if it is smaller or equal to phi, same as masked, just put the return bit together before returning.
+int SecLeq_unmasked_res(Masked* x, int phi, int k){
+    Masked res;
+    CompMasked cx;
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        cx.shares[i] = x->shares[i];
+    }
+
+    int ret_val = 0;
+    SecLeq_masked_res(&res, &cx, phi, k);
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        ret_val ^= res.shares[i];
+    }
+
+    return ret_val;
+}
+
 
 /*int main(int argc, char *argv[]) {
 //    if (argc != 2){
