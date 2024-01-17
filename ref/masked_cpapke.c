@@ -135,7 +135,6 @@ static void masked_poly_frommsg(masked_poly *r, const unsigned char *msg){
 // Helper function to get absolute values of shared value x - a value phi.
 // Absolute value still doesn't work, I'm running out of ideas
 void helper_abs(Masked *x, Masked *bX, int phi){
-    printf("phi: %d, Sec_Leq_res: %d\n", phi, SecLeq_unmasked_res(bX, phi, 16));
     if(SecLeq_unmasked_res(bX, phi, 16) == 1){
         x->shares[0] = ((phi + NEWHOPE_Q) - (x->shares[0] % NEWHOPE_Q)) % NEWHOPE_Q;
         for(int i = 1; i <= MASKING_ORDER; i++){
@@ -171,77 +170,13 @@ void masked_poly_tomsg(unsigned char *msg, const masked_poly *x) {
         A2B(&Bt3, &t3);
         A2B(&Bt4, &t4);
 
-        int t1_res = 0;
-        int t2_res = 0;
-        int t3_res = 0;
-        int t4_res = 0;
-        printf("Pre -1/2 t1 res bit %d\n", i);
-        for(int j = 0; j <= MASKING_ORDER; j++){
-            printf("Share %d: %d, ", j, Bt1.shares[j]);
-            t1_res ^= Bt1.shares[j];
-        }
-        printf("Full result: %d\n", t1_res);
-
-        printf("Pre -1/2 t2 res bit %d\n", i);
-        for(int j = 0; j <= MASKING_ORDER; j++){
-            printf("Share %d: %d, ", j, Bt2.shares[j]);
-            t2_res ^= Bt2.shares[j];
-        }
-        printf("Full result: %d\n", t2_res);
-
-        printf("Pre -1/2 t3 res bit %d\n", i);
-        for(int j = 0; j <= MASKING_ORDER; j++){
-            printf("Share %d: %d, ", j, Bt3.shares[j]);
-            t3_res ^= Bt3.shares[j];
-        }
-        printf("Full result: %d\n", t3_res);
-
-        printf("Pre -1/2 t4 res bit %d\n", i);
-        for(int j = 0; j <= MASKING_ORDER; j++){
-            printf("Share %d: %d, ", j, Bt4.shares[j]);
-            t4_res ^= Bt4.shares[j];
-        }
-        printf("Full result: %d\n\n\n", t4_res);
-
         int phi = (NEWHOPE_Q-1)/2;
         helper_abs(&t1, &Bt1, phi);
         helper_abs(&t2, &Bt2, phi);
         helper_abs(&t3, &Bt3, phi);
         helper_abs(&t4, &Bt4, phi);
 
-        t1_res = 0;
-        t2_res = 0;
-        t3_res = 0;
-        t4_res = 0;
-        printf("t1 res bit %d\n", i);
-        for(int j = 0; j <= MASKING_ORDER; j++){
-            printf("Share %d: %d, ", j, t1.shares[j]);
-            t1_res = (t1_res + t1.shares[j]) % NEWHOPE_Q;
-        }
-        printf("Full result: %d\n", t1_res);
-
-        printf("t2 res bit %d\n", i);
-        for(int j = 0; j <= MASKING_ORDER; j++){
-            printf("Share %d: %d, ", j, t2.shares[j]);
-            t2_res = (t2_res + t2.shares[j]) % NEWHOPE_Q;
-        }
-        printf("Full result: %d\n", t2_res);
-
-        printf("t3 res bit %d\n", i);
-        for(int j = 0; j <= MASKING_ORDER; j++){
-            printf("Share %d: %d, ", j, t3.shares[j]);
-            t3_res = (t3_res + t3.shares[j]) % NEWHOPE_Q;
-        }
-        printf("Full result: %d\n", t3_res);
-
-        printf("t4 res bit %d\n", i);
-        for(int j = 0; j <= MASKING_ORDER; j++){
-            printf("Share %d: %d, ", j, t4.shares[j]);
-            t4_res = (t4_res + t4.shares[j]) % NEWHOPE_Q;
-        }
-        printf("Full result: %d\n\n\n", t4_res);
-
-        /*A2B(&Bt1, &t1);
+        A2B(&Bt1, &t1);
         A2B(&Bt2, &t2);
         A2B(&Bt3, &t3);
         A2B(&Bt4, &t4);
@@ -259,29 +194,13 @@ void masked_poly_tomsg(unsigned char *msg, const masked_poly *x) {
         SecAdd(&sum2, &sum1, &c3, 17);
         SecAdd(&sum3, &sum2, &c4, 17);
 
-        *//*int add_res = 0;
-        printf("Add res bit %d\n", i);
-        for(int j = 0; j <= MASKING_ORDER; j++){
-            printf("Share %d: %d, ", j, sum3.shares[j]);
-            add_res ^= sum3.shares[j];
-        }
-        printf("Full result: %d\n", add_res);*/
-
-        //SecLeq_masked_res(&final_res, &sum3, NEWHOPE_Q, 17);
-
-        /*printf("Final res bit %d\n", i);
-        int full_res = 0;
-        for(int j = 0; j <= MASKING_ORDER; j++){
-            printf("Share %d: %d, ", j, final_res.shares[j]);
-            full_res ^= final_res.shares[j];
-        }
-        printf("Full result: %d\n", full_res);*//*
+        SecLeq_masked_res(&final_res, &sum3, NEWHOPE_Q, 17);
 
         int byte_pos = i >> 3;
         int bit_pos = i - byte_pos * 8;
         for(int j = 0; j <= MASKING_ORDER; j++){
             msg[byte_pos + (j*NEWHOPE_SYMBYTES)] ^= final_res.shares[j] << bit_pos;
-        }*/
+        }
     }
 }
 
@@ -396,7 +315,5 @@ void masked_cpapke_dec(unsigned char *m, const unsigned char *c, const unsigned 
 
     masked_poly_sub(&tmp, &tmp, &vprime);
 
-    //TODO: Recombine should be done after tomsg, figure out how to perform tomsg on a masked polynomial.
-    //recombine(&tmp_recomb, &tmp);
     masked_poly_tomsg(m, &tmp);
 }
