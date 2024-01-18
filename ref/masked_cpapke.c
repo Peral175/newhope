@@ -134,7 +134,7 @@ static void masked_poly_frommsg(masked_poly *r, const unsigned char *msg){
 
 // Helper function to get absolute values of shared value x - a value phi.
 // Absolute value still doesn't work, I'm running out of ideas
-void helper_abs(Masked *x, Masked *bX, int phi){
+static void helper_abs(Masked *x, Masked *bX, int phi){
     if(SecLeq_unmasked_res(bX, phi, 16) == 1){
         x->shares[0] = ((phi + NEWHOPE_Q) - (x->shares[0] % NEWHOPE_Q)) % NEWHOPE_Q;
         for(int i = 1; i <= MASKING_ORDER; i++){
@@ -147,7 +147,7 @@ void helper_abs(Masked *x, Masked *bX, int phi){
 }
 
 
-void masked_poly_tomsg(unsigned char *msg, const masked_poly *x) {
+static void masked_poly_tomsg(unsigned char *msg, const masked_poly *x) {
     Masked t, t1, t2, t3, t4, Bt1, Bt2, Bt3, Bt4, final_res;
     CompMasked c1, c2, c3, c4, sum1, sum2, sum3;
 
@@ -205,7 +205,7 @@ void masked_poly_tomsg(unsigned char *msg, const masked_poly *x) {
 }
 
 
-void masked_sample(masked_poly *r, const unsigned char *seed, unsigned char nonce){
+static void masked_sample(masked_poly *r, const unsigned char *seed, unsigned char nonce){
 #if NEWHOPE_K != 8
 #error "poly_sample in poly.c only supports k=8"
 #endif
@@ -237,6 +237,7 @@ void masked_sample(masked_poly *r, const unsigned char *seed, unsigned char nonc
         }
     }
 }
+
 
 void masked_cpapke_keypair(unsigned char *pk, unsigned char *sk){
     masked_poly ehat, ahat_shat, bhat, shat;
@@ -303,7 +304,7 @@ void masked_cpapke_enc(unsigned char *c, const unsigned char *m, const unsigned 
 }
 
 void masked_cpapke_dec(unsigned char *m, const unsigned char *c, const unsigned char *sk){
-    poly vprime, uhat, tmp_recomb;
+    poly vprime, uhat;
     masked_poly shat, tmp;
 
     // Secret key should still be masked here
@@ -314,6 +315,93 @@ void masked_cpapke_dec(unsigned char *m, const unsigned char *c, const unsigned 
     reverse_NTT_masked_poly(&tmp);
 
     masked_poly_sub(&tmp, &tmp, &vprime);
+
+    masked_poly_tomsg(m, &tmp);
+}
+
+// Encode the ciphertext while it is still in masked form
+static void masked_encode_c(unsigned char *r, const masked_poly *b, const masked_poly *v){
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        encode_c(r + (NEWHOPE_CPAPKE_CIPHERTEXTBYTES*i), &b->poly_shares[i], &v->poly_shares[i]);
+    }
+}
+
+// Decode a masked ciphertext
+static void masked_decode_c(masked_poly *b, masked_poly *v, const unsigned char *r) {
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        decode_c(&b->poly_shares[i], &v->poly_shares[i], r + (NEWHOPE_CPAPKE_CIPHERTEXTBYTES*i));
+    }
+}
+
+// Substraction of a masked polynomial from another masked polynomial
+static void masked_poly_sub2(masked_poly *r, const masked_poly *a, const masked_poly *b){
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        poly_sub(&r->poly_shares[i], &a->poly_shares[i], &b->poly_shares[i]);
+    }
+}
+
+// Multiply a masked poly with a non-masked polynomial, both in the NTT domain
+static void masked_poly_mul2(masked_poly *r, const masked_poly *a, const masked_poly *b){
+    Masked temp1;
+    Masked temp2;
+    Masked res;
+    for(int i = 0; i < NEWHOPE_N; i++){
+        for(int j = 0; j <= MASKING_ORDER; j++){
+            temp1.shares[j] = a->poly_shares[j].coeffs[i];
+            temp2.shares[j] = b->poly_shares[j].coeffs[i];
+        }
+        secMult(&res, &temp1, &temp2);
+
+        for(int j = 0; j <= MASKING_ORDER; j++){
+            r->poly_shares[j].coeffs[i] = res.shares[j];
+        }
+    }
+}
+
+// Version of the masked encryption that keeps the ciphertext masked, used in the CCA
+void masked_cpapke_enc2(unsigned char *c, const unsigned char *m, const unsigned char *pk, const unsigned char *coin){
+    poly ahat, bhat;
+    masked_poly sprime, eprime, vprime, eprimeprime, v, uhat;
+    unsigned char publicseed[NEWHOPE_SYMBYTES];
+
+    masked_poly_frommsg(&v, m);
+
+    decode_pk(&bhat, publicseed, pk);
+    gen_a(&ahat, publicseed);
+
+    masked_sample(&sprime, coin, 0);
+    masked_sample(&eprime, coin, 1);
+    masked_sample(&eprimeprime, coin, 2);
+
+    NTT_masked_poly(&sprime);
+    NTT_masked_poly(&eprime);
+
+    masked_poly_mul(&uhat, &sprime, &ahat);
+    masked_poly_add(&uhat, &uhat, &eprime);
+
+    masked_poly_mul(&vprime, &sprime, &bhat);
+    reverse_NTT_masked_poly(&vprime);
+
+    masked_poly_add(&vprime, &vprime, &eprimeprime);
+    masked_poly_add(&vprime, &vprime, &v); // add message
+
+    masked_encode_c(c, &uhat, &vprime);
+}
+
+
+// Version of the masked decryption that takes the ciphertext still masked, used in the CCA
+void masked_cpapke_dec2(unsigned char *m, const unsigned char *c, const unsigned char *sk){
+    masked_poly vprime, uhat;
+    masked_poly shat, tmp;
+
+    masked_poly_frombytes(&shat, sk);
+
+    masked_decode_c(&uhat, &vprime, c);
+
+    masked_poly_mul2(&tmp, &shat, &uhat);
+    reverse_NTT_masked_poly(&tmp);
+
+    masked_poly_sub2(&tmp, &tmp, &vprime);
 
     masked_poly_tomsg(m, &tmp);
 }
