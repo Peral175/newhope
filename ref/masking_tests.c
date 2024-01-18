@@ -21,7 +21,9 @@ int main(int argc, char *argv[]){
     unsigned char m_dec_combined[NEWHOPE_SYMBYTES];
     unsigned char coin[NEWHOPE_SYMBYTES];
 
-    /*randombytes(m,NEWHOPE_SYMBYTES * (MASKING_ORDER+1));
+    /*
+    // Test the first version of the cpapke enc and dec functions (The ones to be used in the CPA KEM)
+    randombytes(m,NEWHOPE_SYMBYTES * (MASKING_ORDER+1));
     randombytes(coin,NEWHOPE_SYMBYTES);
 
     for(int i = 0; i < 32; i++){
@@ -50,6 +52,7 @@ int main(int argc, char *argv[]){
         printf("Message index %d, Before: %d, After dec: %d \n", i, m_combined[i], m_dec_combined[i]);
     }*/
 
+    // Test the second version of the cpapke enc and dec functions (The ones to be used in the CCA KEM)
     randombytes(m,NEWHOPE_SYMBYTES * (MASKING_ORDER+1));
     randombytes(coin,NEWHOPE_SYMBYTES);
 

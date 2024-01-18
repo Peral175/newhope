@@ -24,14 +24,14 @@ typedef struct {
 
 
 uint16_t random16(){
-    //srand(time(NULL));  // Set at start of the new_hope functions later, don't keep it here
+    //srand(time(NULL));  // Set at start of the new_hope functions later, or get better randomness
     uint16_t x = rand();
     return x;
 }
 
 
 uint16_t random16mod(){
-    //srand(time(NULL));  // Set at start of the new_hope functions later, don't keep it here
+    //srand(time(NULL));  // Set at start of the new_hope functions later, or get better randomness
     uint16_t x = rand() % NEWHOPE_Q;
     return x;
 }
@@ -139,8 +139,8 @@ void opti_B2A(Masked* y, Masked* x, int k){
  * from: "High-order Table-based Conversion Algorithms and Masking
 Lattice-based Encryption"
  * Input:
- *      Masked* x: a pointer to a type Masked which contains shares
- *      Masked* y: a pointer to a type Masked which contains shares
+ *      Masked* x: a pointer to a type Masked which contains the arithmetic shares
+ *      Masked* y: a pointer to a type Masked which will contain the created boolean shares
  *      y will be transformed into a boolean masked form via the arithmetic values of x.
  **/
 void A2B(Masked* y, Masked* x){
@@ -470,12 +470,98 @@ int SecLeq_unmasked_res(Masked* x, int phi, int k){
     return ret_val;
 }
 
+void arithmetic_refresh(Masked* x, int q){
+    int r;
+    for(int i=0; i< MASKING_ORDER; ++i){
+        r = random16() % q;
+        x->shares[i] = (x->shares[i] + r)%q;
+        x->shares[MASKING_ORDER] = (x->shares[MASKING_ORDER] - r + q)%q;
+    }
+}
+
+// Shift function, taken from the paper High-order Table-based Conversion Algorithms and Masking
+//Lattice-based Encryption, Algorithm 6.
+void shift(int k, Masked *a, Masked *z){
+    Masked x, c;
+    Masked T[2*(MASKING_ORDER+1)];
+
+    for(int i=0; i < MASKING_ORDER+1; ++i){
+        x.shares[i] = z->shares[i]&1;
+    }
+
+    for(int u=0; u < 2*(MASKING_ORDER+1); ++u) {
+        T[u].shares[0] = u >> 1;
+        for(int i=1; i < MASKING_ORDER+1; ++i){
+            T[u].shares[i] = 0;
+        }
+    }
+
+    for(int i=0; i < MASKING_ORDER; ++i){
+        for(int u=0; u < 2*((MASKING_ORDER+1)-(i+1)); ++u){
+            for(int j=0; j < MASKING_ORDER+1; ++j){
+                T[u].shares[j] = T[u+x.shares[i]].shares[j];
+            }
+            arithmetic_refresh(&(T[u]), 1<<(k-1));
+        }
+    }
+
+    for(int i=0; i < MASKING_ORDER+1; ++i){
+        c.shares[i] = T[x.shares[MASKING_ORDER]].shares[i];
+    }
+    arithmetic_refresh(&c, 1<<(k-1));
+
+    for(int i=0; i < MASKING_ORDER+1; ++i){
+        a->shares[i] = ((z->shares[i] >> 1) + c.shares[i])%(1<<(k-1));
+    }
+}
+
+// Optimized arithmetic to boolean conversion, taken from the paper High-order Table-based Conversion Algorithms and Masking
+// Lattice-based Encryption, Algorithm 11.
+void opti_A2B(Masked *s, Masked *z){
+    Masked temp;
+    int k = 16;
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        s->shares[i] = 0;
+    }
+
+    for(int j = 0; j <= k-1; j++){
+        for(int i = 0; i <= MASKING_ORDER; i++){
+            s->shares[i] = s->shares[i] + ((z->shares[i] & 1) << j);
+        }
+
+        shift(k-j, &temp, z);
+
+        for(int i = 0; i <= MASKING_ORDER; i++){
+            z->shares[i] = temp.shares[i];
+        }
+    }
+}
+
 
 /*int main(int argc, char *argv[]) {
 //    if (argc != 2){
 //    	return -1;
 //    }
     srand(time(NULL));
+
+    Masked x, y;
+    basic_gen_shares_mod(&x);
+    int t = pow(2, 15);
+
+    int comb_x = 0;
+    int comb_y = 0;
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        comb_x = comb_x + x.shares[i];
+    }
+
+    opti_A2B(&y, &x);
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        comb_y ^= y.shares[i];
+    }
+
+    printf("Expected %d, Result %d", comb_x, comb_y);
     /*
     Masked x;
     Masked y;
