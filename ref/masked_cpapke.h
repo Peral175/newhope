@@ -15,5 +15,14 @@ void masked_cpapke_dec(unsigned char *m,
                 const unsigned char *c,
                 const unsigned char *sk);
 
+void masked_cpapke_enc2(unsigned char *c,
+                        const unsigned char *m,
+                        const unsigned char *pk,
+                        const unsigned char *coin);
+
+void masked_cpapke_dec2(unsigned char *m,
+                        const unsigned char *c,
+                        const unsigned char *sk);
+
 
 #endif //NEWHOPE_MASKED_CPAPKE_H
