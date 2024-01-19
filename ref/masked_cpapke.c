@@ -1,7 +1,7 @@
 #include "masked_cpapke.h"
 #include "poly.h"
 #include "randombytes.h"
-#include "fips202.h"
+#include "masked_fips202.h"
 #include "masking_gadgets.h"
 #include <stdio.h>
 
@@ -213,16 +213,22 @@ static void masked_sample(masked_poly *r, const unsigned char *seed, unsigned ch
     Masked a, b;
     int i,j;
 
-    unsigned char extseed[NEWHOPE_SYMBYTES+2];
+    unsigned char extseed[(NEWHOPE_SYMBYTES+2)];
 
-    for(i=0;i<NEWHOPE_SYMBYTES;i++)
-        extseed[i] = seed[i];
-    extseed[NEWHOPE_SYMBYTES] = nonce;
+    for(int z = 1; z <= MASKING_ORDER+1; z++){
+        for(i=0;i<NEWHOPE_SYMBYTES;i++)
+            extseed[i + (z*NEWHOPE_SYMBYTES)] = seed[i + (z*NEWHOPE_SYMBYTES)];
+        extseed[NEWHOPE_SYMBYTES*z] = nonce;
+    }
 
     for(i=0;i<NEWHOPE_N/64;i++) /* Generate noise in blocks of 64 coefficients */
     {
         extseed[NEWHOPE_SYMBYTES+1] = i;
-        shake256(buf,128*(MASKING_ORDER+1),extseed,NEWHOPE_SYMBYTES+2);
+        for(int z = 1; z <= MASKING_ORDER+1; z++){
+            extseed[(NEWHOPE_SYMBYTES+1) * z] = 0;
+        }
+
+        shake256_masked(buf,128,extseed, NEWHOPE_SYMBYTES+2);
         for(j=0;j<64;j++)
         {
             for(int z = 0; z <= MASKING_ORDER; z++){
@@ -242,13 +248,13 @@ static void masked_sample(masked_poly *r, const unsigned char *seed, unsigned ch
 void masked_cpapke_keypair(unsigned char *pk, unsigned char *sk){
     masked_poly ehat, ahat_shat, bhat, shat;
     poly ahat;
-    unsigned char z[2*NEWHOPE_SYMBYTES];
+    unsigned char z[NEWHOPE_SYMBYTES + (MASKING_ORDER + 1) * NEWHOPE_SYMBYTES];
     unsigned char *publicseed = z;
     unsigned char *noiseseed = z+NEWHOPE_SYMBYTES;
 
     z[0] = 0x01;
     randombytes(z+1, NEWHOPE_SYMBYTES);
-    shake256(z, 2*NEWHOPE_SYMBYTES, z, NEWHOPE_SYMBYTES + 1);
+    shake256(z, NEWHOPE_SYMBYTES + (MASKING_ORDER + 1) * NEWHOPE_SYMBYTES, z, NEWHOPE_SYMBYTES + 1);
 
     gen_a(&ahat, publicseed);
 
