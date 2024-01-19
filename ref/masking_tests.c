@@ -4,6 +4,7 @@
 #include "masking_gadgets.h"
 #include "masked_cpapke.h"
 #include <stdlib.h>
+#include "masked_fips202.h"
 
 static void gen_a(poly *a, const unsigned char *seed)
 {
@@ -53,7 +54,7 @@ int main(int argc, char *argv[]){
     }*/
 
     // Test the second version of the cpapke enc and dec functions (The ones to be used in the CCA KEM)
-    randombytes(m,NEWHOPE_SYMBYTES * (MASKING_ORDER+1));
+    /*randombytes(m,NEWHOPE_SYMBYTES * (MASKING_ORDER+1));
     randombytes(coin,NEWHOPE_SYMBYTES);
 
     for(int i = 0; i < 32; i++){
@@ -81,4 +82,35 @@ int main(int argc, char *argv[]){
     for(int i = 0; i<32; i++){
         printf("Message index %d, Before: %d, After dec: %d \n", i, m_combined[i], m_dec_combined[i]);
     }
+
+    // Testing how the masked hash function works.
+     */
+    /*unsigned char t1[1 * (MASKING_ORDER+1)];
+    unsigned char t2[1 * (MASKING_ORDER+1)];
+    unsigned char t3[1 * (MASKING_ORDER+1)];
+    Masked m1;
+    int m2 = 0;
+    int m3 = 0;
+    randombytes(m,NEWHOPE_SYMBYTES * (MASKING_ORDER+1));
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        m1.shares[i] = t1[i];
+    }
+
+    shake256_masked(t2, 4, t1, 4);
+
+    arith_refresh(&m1, NEWHOPE_Q);
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        t1[i] = m1.shares[i];
+    }
+
+    shake256_masked(t3, 4, t1, 4);
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        m2 = (m2 + t2[i]) % NEWHOPE_Q;
+        m3 = (m3 + t3[i]) % NEWHOPE_Q;
+    }
+
+    printf("Before refresh: %d, After refresh %d\n", m2, m3);*/
 }

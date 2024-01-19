@@ -350,7 +350,7 @@ static void masked_poly_mul2(masked_poly *r, const masked_poly *a, const masked_
             temp1.shares[j] = a->poly_shares[j].coeffs[i];
             temp2.shares[j] = b->poly_shares[j].coeffs[i];
         }
-        secMult(&res, &temp1, &temp2);
+        SecMult(&res, &temp1, &temp2);
 
         for(int j = 0; j <= MASKING_ORDER; j++){
             r->poly_shares[j].coeffs[i] = res.shares[j];

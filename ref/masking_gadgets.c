@@ -55,11 +55,11 @@ void basic_gen_shares(Masked *x, Masked *y){
 
 // Exchange the c modulos with the modulo function implemented in new hope later
 // From paper "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryptio
-void arith_refresh(Masked* x){
+void arith_refresh(Masked* x, int q){
     for(int j = 0; j < MASKING_ORDER; j++){
-        uint16_t r = random16() % NEWHOPE_Q;
-        x->shares[j] = (x->shares[j] + r) % NEWHOPE_Q;
-        x->shares[MASKING_ORDER] = (x->shares[MASKING_ORDER] + NEWHOPE_Q - r) % NEWHOPE_Q;
+        uint16_t r = random16() % q;
+        x->shares[j] = (x->shares[j] + r) % q;
+        x->shares[MASKING_ORDER] = (x->shares[MASKING_ORDER] + q - r) % q;
     }
 }
 
@@ -101,7 +101,7 @@ void B2A(Masked* y, Masked* x, int k){
         }
 
         for(int u = 0;  u < (1 << k); u++) {
-            arith_refresh(&T_p[u]);
+            arith_refresh(&T_p[u], NEWHOPE_Q);
             for(int j = 0; j <= MASKING_ORDER; j++){
                 T[u].shares[j] = T_p[u].shares[j];
             }
@@ -110,7 +110,7 @@ void B2A(Masked* y, Masked* x, int k){
     for(int i = 0; i <= MASKING_ORDER; i++){
         y->shares[i] = T[x->shares[MASKING_ORDER]].shares[i];
     }
-    arith_refresh(y);
+    arith_refresh(y, NEWHOPE_Q);
 }
 
 
@@ -204,7 +204,7 @@ void secAnd(Masked* z, Masked* a, Masked* b, int k){
  *      Masked* b: second operand
  *      Masked* z: output of operation
  **/
-void secMult(Masked* z, Masked* a, Masked* b){
+void SecMult(Masked* z, Masked* a, Masked* b){
     for (int i=0; i<=MASKING_ORDER;i++){
         z->shares[i] = (a->shares[i] * b->shares[i]) % NEWHOPE_Q;
     }
@@ -258,13 +258,13 @@ void secExpo(Masked* B, Masked* A, int e){
         Masked C;
         refreshMasks(&C, B);
         Masked tmp2;
-        secMult(&tmp2, B, &C);
+        SecMult(&tmp2, B, &C);
         for(int j = 0; j <= MASKING_ORDER; j++){
             B->shares[j] = tmp2.shares[j] % NEWHOPE_Q;
         }
         if ((e & (int) pow(2,i)) == (int) pow(2,i)) {
             Masked tmp3;
-            secMult(&tmp3, A, B);
+            SecMult(&tmp3, A, B);
             for(int j = 0; j <= MASKING_ORDER; j++){
                 B->shares[j] = tmp3.shares[j] % NEWHOPE_Q;
             }
@@ -313,7 +313,7 @@ int polyZeroTestExpo(int K,  int L, masked_poly X[L], masked_short_poly Y[K]){
             H.shares[m] = Y->poly_shares[m].coeffs[j];
         }
         zeroTestExpoShares(&C,&H);
-        secMult(&tmp,&B,&C);
+        SecMult(&tmp,&B,&C);
         B = tmp;
     }
     refreshMasks(&C,&B);
@@ -362,7 +362,7 @@ void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
     }
 
     // Refresh shares
-    arith_refresh(a);
+    arith_refresh(a, NEWHOPE_Q);
 }
 
 
@@ -470,15 +470,6 @@ int SecLeq_unmasked_res(Masked* x, int phi, int k){
     return ret_val;
 }
 
-void arithmetic_refresh(Masked* x, int q){
-    int r;
-    for(int i=0; i< MASKING_ORDER; ++i){
-        r = random16() % q;
-        x->shares[i] = (x->shares[i] + r)%q;
-        x->shares[MASKING_ORDER] = (x->shares[MASKING_ORDER] - r + q)%q;
-    }
-}
-
 // Shift function, taken from the paper High-order Table-based Conversion Algorithms and Masking
 //Lattice-based Encryption, Algorithm 6.
 void shift(int k, Masked *a, Masked *z){
@@ -501,14 +492,14 @@ void shift(int k, Masked *a, Masked *z){
             for(int j=0; j < MASKING_ORDER+1; ++j){
                 T[u].shares[j] = T[u+x.shares[i]].shares[j];
             }
-            arithmetic_refresh(&(T[u]), 1<<(k-1));
+            arith_refresh(&(T[u]), 1<<(k-1));
         }
     }
 
     for(int i=0; i < MASKING_ORDER+1; ++i){
         c.shares[i] = T[x.shares[MASKING_ORDER]].shares[i];
     }
-    arithmetic_refresh(&c, 1<<(k-1));
+    arith_refresh(&c, 1<<(k-1));
 
     for(int i=0; i < MASKING_ORDER+1; ++i){
         a->shares[i] = ((z->shares[i] >> 1) + c.shares[i])%(1<<(k-1));
