@@ -364,10 +364,11 @@ static void masked_poly_mul2(masked_poly *r, const masked_poly *a, const masked_
     }
 }
 
-// Version of the masked encryption that keeps the ciphertext masked, used in the CCA
-void masked_cpapke_enc2(unsigned char *c, const unsigned char *m, const unsigned char *pk, const unsigned char *coin){
+// Version of the masked encryption that keeps the ciphertext masked but doesn't encode it at the end, and instead
+// returns the two masked polynomials that make up the ciphertext as they are,used in the CCA decapsulation
+void masked_cpapke_enc2(masked_poly *vprime, masked_poly *uhat, const unsigned char *m, const unsigned char *pk, const unsigned char *coin){
     poly ahat, bhat;
-    masked_poly sprime, eprime, vprime, eprimeprime, v, uhat;
+    masked_poly sprime, eprime, eprimeprime, v;
     unsigned char publicseed[NEWHOPE_SYMBYTES];
 
     masked_poly_frommsg(&v, m);
@@ -382,32 +383,31 @@ void masked_cpapke_enc2(unsigned char *c, const unsigned char *m, const unsigned
     NTT_masked_poly(&sprime);
     NTT_masked_poly(&eprime);
 
-    masked_poly_mul(&uhat, &sprime, &ahat);
-    masked_poly_add(&uhat, &uhat, &eprime);
+    masked_poly_mul(uhat, &sprime, &ahat);
+    masked_poly_add(uhat, uhat, &eprime);
 
-    masked_poly_mul(&vprime, &sprime, &bhat);
-    reverse_NTT_masked_poly(&vprime);
+    masked_poly_mul(vprime, &sprime, &bhat);
+    reverse_NTT_masked_poly(vprime);
 
-    masked_poly_add(&vprime, &vprime, &eprimeprime);
-    masked_poly_add(&vprime, &vprime, &v); // add message
+    masked_poly_add(vprime, vprime, &eprimeprime);
+    masked_poly_add(vprime, vprime, &v); // add message
 
-    masked_encode_c(c, &uhat, &vprime);
+    //masked_encode_c(c, &uhat, &vprime);
 }
 
 
-// Version of the masked decryption that takes the ciphertext still masked, used in the CCA
-void masked_cpapke_dec2(unsigned char *m, const unsigned char *c, const unsigned char *sk){
-    masked_poly vprime, uhat;
+// Version of the masked decryption that takes the ciphertext still masked but not encoded, only used for testing
+void masked_cpapke_dec2(unsigned char *m, const masked_poly *vprime, const masked_poly *uhat, const unsigned char *sk){
     masked_poly shat, tmp;
 
     masked_poly_frombytes(&shat, sk);
 
-    masked_decode_c(&uhat, &vprime, c);
+    //masked_decode_c(&uhat, &vprime, c);
 
-    masked_poly_mul2(&tmp, &shat, &uhat);
+    masked_poly_mul2(&tmp, &shat, uhat);
     reverse_NTT_masked_poly(&tmp);
 
-    masked_poly_sub2(&tmp, &tmp, &vprime);
+    masked_poly_sub2(&tmp, &tmp, vprime);
 
     masked_poly_tomsg(m, &tmp);
 }

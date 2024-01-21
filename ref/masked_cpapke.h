@@ -15,13 +15,15 @@ void masked_cpapke_dec(unsigned char *m,
                 const unsigned char *c,
                 const unsigned char *sk);
 
-void masked_cpapke_enc2(unsigned char *c,
+void masked_cpapke_enc2(masked_poly *vprime,
+                        masked_poly *uhat,
                         const unsigned char *m,
                         const unsigned char *pk,
                         const unsigned char *coin);
 
 void masked_cpapke_dec2(unsigned char *m,
-                        const unsigned char *c,
+                        const masked_poly *vprime,
+                        const masked_poly *uhat,
                         const unsigned char *sk);
 
 

@@ -42,22 +42,63 @@ int masked_CCA_keypair(unsigned char *pk, unsigned char *skh)
 }
 
 
-// TODO: Implement Masked encapsulation for the CCAKEM
+// TODO: Needs testing
 int masked_CCA_encaps(unsigned char *ct, unsigned char *ss, const unsigned char *pk)
 {
-    unsigned char buf[2*NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
+    unsigned char coin[(NEWHOPE_SYMBYTES+1)*(MASKING_ORDER+1)];
+    unsigned char coin_prime[NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
+    unsigned char m[NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
+    unsigned char pk_masked[NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
+    unsigned char pk_hash[NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
+    unsigned char hash_buf[3*NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
+    unsigned char input_buf[(2*NEWHOPE_SYMBYTES + 1)*(MASKING_ORDER+1)];
+    unsigned char last_hash_input[2*NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
 
     for(int i = 0; i <= MASKING_ORDER; i++){
-        randombytes(buf+1 + i*(NEWHOPE_SYMBYTES) + 1*i,NEWHOPE_SYMBYTES);
-        buf[i*(NEWHOPE_SYMBYTES+1)] = 0;
+        randombytes(coin+1 + i*(NEWHOPE_SYMBYTES) + 1*i,NEWHOPE_SYMBYTES);
+        coin[i*(NEWHOPE_SYMBYTES+1)] = 0;
     }
-    buf[0] = 0x02;
+    coin[0] = 0x04;
 
-    shake256_masked(buf,2*NEWHOPE_SYMBYTES,buf,NEWHOPE_SYMBYTES + 1);
+    for(int i = 0; i < NEWHOPE_SYMBYTES; i++){
+        pk_masked[i] = pk[i];
+    }
 
-    masked_cpapke_enc(ct, buf, pk, buf+NEWHOPE_SYMBYTES*(MASKING_ORDER+1));
+    for(int i = 1; i <= MASKING_ORDER; i++) {
+        for (int j = 0; j < NEWHOPE_SYMBYTES; j++) {
+            pk_masked[j + i*NEWHOPE_SYMBYTES] = 0;
+        }
+    }
 
-    shake256_masked(ss, NEWHOPE_SYMBYTES, buf, NEWHOPE_SYMBYTES);
+    shake256_masked(pk_hash,NEWHOPE_SYMBYTES,pk_masked,NEWHOPE_SYMBYTES);
+
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        for (int j = 0; j < NEWHOPE_SYMBYTES; j++) {
+            input_buf[j + i*2*NEWHOPE_SYMBYTES + 1*i + 1] = m[j + i*NEWHOPE_SYMBYTES];
+            input_buf[j + i*2*NEWHOPE_SYMBYTES + 1*i + 1 + NEWHOPE_SYMBYTES] = pk_hash[j + i*NEWHOPE_SYMBYTES];
+        }
+        input_buf[i*(NEWHOPE_SYMBYTES*2+1)] = 0;
+    }
+    input_buf[0] = 0x08;
+
+    shake256_masked(hash_buf,3*NEWHOPE_SYMBYTES,input_buf,2*NEWHOPE_SYMBYTES + 1);
+
+    for (int j = 0; j < NEWHOPE_SYMBYTES; j++) {
+        ct[j + NEWHOPE_SYMBYTES + NEWHOPE_CPAPKE_CIPHERTEXTBYTES] = 0;
+        for(int i = 0; i <= MASKING_ORDER; i++){
+            last_hash_input[j + i*2*NEWHOPE_SYMBYTES] = hash_buf[j + 3*i*NEWHOPE_SYMBYTES];
+            last_hash_input[j + i*2*NEWHOPE_SYMBYTES + NEWHOPE_SYMBYTES] = 0;
+            coin_prime[j + i*NEWHOPE_SYMBYTES] = hash_buf[j + 3*i*NEWHOPE_SYMBYTES + NEWHOPE_SYMBYTES];
+            ct[j + NEWHOPE_SYMBYTES + NEWHOPE_CPAPKE_CIPHERTEXTBYTES] ^= hash_buf[j + 3*i*NEWHOPE_SYMBYTES + 2*NEWHOPE_SYMBYTES];
+        }
+    }
+
+    masked_cpapke_enc(ct, m, pk, coin_prime);
+
+    // Here the regular shake 256 is used since the term c||d(The input here) is not.
+    shake256(last_hash_input+NEWHOPE_SYMBYTES, 32,  ct, NEWHOPE_CCAKEM_CIPHERTEXTBYTES);
+
+    shake256_masked(ss, NEWHOPE_SYMBYTES, last_hash_input, 2*NEWHOPE_SYMBYTES);
 
     return 0;
 }
