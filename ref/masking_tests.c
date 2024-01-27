@@ -90,7 +90,7 @@ int main(int argc, char *argv[]){
     masked_CCA_encaps(ct, m, pk);
 
     // Here the m_dec should be the same as m, though we got m from the encaps instead of generating it ourselves
-    masked_CCA_decaps(m_dec, ct, sk);
+    masked_CCA_decaps(m_dec, ct, skh);
 
     for(int i = 0; i < 32; i++){
         for(int j = 0; j <= MASKING_ORDER; j++){

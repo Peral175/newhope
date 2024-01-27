@@ -530,7 +530,7 @@ void opti_A2B(Masked *s, Masked *z){
 }
 
 
-int main(int argc, char *argv[]) {
+/*int main(int argc, char *argv[]) {
 //    if (argc != 2){
 //    	return -1;
 //    }
@@ -709,7 +709,7 @@ int main(int argc, char *argv[]) {
     printf("B: %d \n", B % NEWHOPE_Q);
     */
     // Algorithm 25 test!
-    masked_poly X;
+    /*masked_poly X;
     for (int i=0;i<1024;i++) {
         for (int j = 0; j <= MASKING_ORDER; j++) {
             X.poly_shares[j].coeffs[i] = 0;
@@ -721,4 +721,4 @@ int main(int argc, char *argv[]) {
     int l = 1024;
     int bool = polyZeroTestExpo(k,l, &X);
     printf("bool: %d \n", bool);
-}
+}*/

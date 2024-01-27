@@ -61,7 +61,7 @@ int masked_CCA_encaps(unsigned char *ct, unsigned char *ss, const unsigned char 
     unsigned char coin[(NEWHOPE_SYMBYTES+1)*(MASKING_ORDER+1)];
     unsigned char coin_prime[NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
     unsigned char m[NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
-    unsigned char pk_masked[NEWHOPE_CCAKEM_PUBLICKEYBYTES*(MASKING_ORDER+1)];
+    unsigned char pk_mask[NEWHOPE_CCAKEM_PUBLICKEYBYTES * (MASKING_ORDER+1)] = {0};
     unsigned char pk_hash[NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
     unsigned char hash_buf[3*NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
     unsigned char input_buf[(2*NEWHOPE_SYMBYTES + 1)*(MASKING_ORDER+1)];
@@ -73,22 +73,18 @@ int masked_CCA_encaps(unsigned char *ct, unsigned char *ss, const unsigned char 
     }
     coin[0] = 0x04;
 
+    shake256_masked(m,NEWHOPE_SYMBYTES,coin,NEWHOPE_SYMBYTES+1);
+
     for(int i = 0; i < NEWHOPE_CCAKEM_PUBLICKEYBYTES; i++){
-        pk_masked[i] = pk[i];
+        pk_mask[i] = pk[i];
     }
 
-    for(int i = 1; i <= MASKING_ORDER; i++) {
-        for (int j = 0; j < NEWHOPE_CCAKEM_PUBLICKEYBYTES; j++) {
-            pk_masked[j + i*NEWHOPE_SYMBYTES] = 0;
-        }
-    }
-
-    shake256_masked(pk_hash,NEWHOPE_SYMBYTES,pk_masked,NEWHOPE_CCAKEM_PUBLICKEYBYTES);
+    shake256_masked(pk_hash,NEWHOPE_SYMBYTES,pk_mask,NEWHOPE_CCAKEM_PUBLICKEYBYTES);
 
     for(int i = 0; i <= MASKING_ORDER; i++){
         for (int j = 0; j < NEWHOPE_SYMBYTES; j++) {
-            input_buf[j + i*2*NEWHOPE_SYMBYTES + 1*i + 1] = m[j + i*NEWHOPE_SYMBYTES];
-            input_buf[j + i*2*NEWHOPE_SYMBYTES + 1*i + 1 + NEWHOPE_SYMBYTES] = pk_hash[j + i*NEWHOPE_SYMBYTES];
+            input_buf[j + 2*i*(NEWHOPE_SYMBYTES) + 1 + 1*i] = m[j + i*NEWHOPE_SYMBYTES];
+            input_buf[j + 2*i*(NEWHOPE_SYMBYTES) + 1 + 1*i + NEWHOPE_SYMBYTES] = pk_hash[j + i*NEWHOPE_SYMBYTES];
         }
         input_buf[i*(NEWHOPE_SYMBYTES*2+1)] = 0;
     }
@@ -124,7 +120,7 @@ int masked_CCA_decaps(unsigned char *ss, const unsigned char *ct, const unsigned
 {
     poly uhat, vprime;
     masked_poly m_uhat, m_vprime, uhat_diff;
-    unsigned char c[NEWHOPE_CPAPKE_CIPHERTEXTBYTES];
+    unsigned char c_prime[NEWHOPE_CPAPKE_CIPHERTEXTBYTES] = {0};
 
     unsigned char coin_prime_prime[NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
     unsigned char sk[NEWHOPE_CPAPKE_SECRETKEYBYTES * (MASKING_ORDER+1)];
@@ -170,11 +166,14 @@ int masked_CCA_decaps(unsigned char *ss, const unsigned char *ct, const unsigned
         }
     }
 
+    // decrypt the given c
+    masked_cpapke_dec(m_prime, ct, sk);
+
     // Set up the input buffer
     for(int i = 0; i <= MASKING_ORDER; i++){
         for (int j = 0; j < NEWHOPE_SYMBYTES; j++) {
-            input_buf[j + i*2*NEWHOPE_SYMBYTES + 1*i + 1] = m_prime[j + i*NEWHOPE_SYMBYTES];
-            input_buf[j + i*2*NEWHOPE_SYMBYTES + 1*i + 1 + NEWHOPE_SYMBYTES] = h[j + i*NEWHOPE_SYMBYTES];
+            input_buf[j + 2*i*(NEWHOPE_SYMBYTES) + 1 + 1*i] = m_prime[j + i*NEWHOPE_SYMBYTES];
+            input_buf[j + 2*i*(NEWHOPE_SYMBYTES) + 1 + 1*i + NEWHOPE_SYMBYTES] = h[j + i*NEWHOPE_SYMBYTES];
         }
         input_buf[i*(NEWHOPE_SYMBYTES*2+1)] = 0;
     }
@@ -190,15 +189,12 @@ int masked_CCA_decaps(unsigned char *ss, const unsigned char *ct, const unsigned
         }
     }
 
-    // decrypt the given c
-    masked_cpapke_dec(m_prime, ct, sk);
-
     // re-encrypt the m_prime we got, this encryption does not encode the ciphertext and directly returns the masked
     // polynomials
     masked_cpapke_enc2(&m_vprime, &m_uhat, m_prime, pk, coin_prime_prime);
 
     // decode the given c back into its polynomials to compare against the re-encrypted message
-    decode_c(&uhat, &vprime, c);
+    decode_c(&uhat, &vprime, ct);
 
     // Substract the uhat that was given from the one we calculated, then see if it is equal to zero, checking only
     // uhat should be sufficient for verification.

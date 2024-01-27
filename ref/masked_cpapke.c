@@ -213,27 +213,24 @@ static void masked_sample(masked_poly *r, const unsigned char *seed, unsigned ch
     Masked a, b;
     int i,j;
 
-    unsigned char extseed[(NEWHOPE_SYMBYTES+2)];
+    unsigned char extseed[(NEWHOPE_SYMBYTES+2)*(MASKING_ORDER+1)] = {0};
 
-    for(int z = 1; z <= MASKING_ORDER+1; z++){
+    for(int z = 0; z <= MASKING_ORDER+1; z++){
         for(i=0;i<NEWHOPE_SYMBYTES;i++)
-            extseed[i + (z*NEWHOPE_SYMBYTES)] = seed[i + (z*NEWHOPE_SYMBYTES)];
-        extseed[NEWHOPE_SYMBYTES*z] = nonce;
+            extseed[i + z*(NEWHOPE_SYMBYTES+2)] = seed[i + z*NEWHOPE_SYMBYTES];
     }
+    extseed[NEWHOPE_SYMBYTES] = nonce;
 
     for(i=0;i<NEWHOPE_N/64;i++) /* Generate noise in blocks of 64 coefficients */
     {
         extseed[NEWHOPE_SYMBYTES+1] = i;
-        for(int z = 1; z <= MASKING_ORDER+1; z++){
-            extseed[(NEWHOPE_SYMBYTES+1) * z] = 0;
-        }
 
         shake256_masked(buf,128,extseed, NEWHOPE_SYMBYTES+2);
         for(j=0;j<64;j++)
         {
             for(int z = 0; z <= MASKING_ORDER; z++){
-                a.shares[z] = buf[2*(MASKING_ORDER+1)*j+z];
-                b.shares[z] = buf[2*(MASKING_ORDER+1)*j+MASKING_ORDER+1+z];
+                a.shares[z] = buf[2*j + z*128];
+                b.shares[z] = buf[2*j + 1 + z*128];
             }
             Masked samp;
             masked_binomial_dist(&samp, &a, &b, 16);
