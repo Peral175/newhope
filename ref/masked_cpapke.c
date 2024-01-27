@@ -31,7 +31,7 @@ static void encode_c(unsigned char *r, const poly *b, const poly *v)
 }
 
 // Copied from cpapke.c
-static void decode_c(poly *b, poly *v, const unsigned char *r)
+void decode_c(poly *b, poly *v, const unsigned char *r)
 {
     poly_frombytes(b, r);
     poly_decompress(v, r+NEWHOPE_POLYBYTES);
@@ -72,7 +72,7 @@ static void masked_poly_add(masked_poly *r, const masked_poly *a, const masked_p
 }
 
 // Substraction of an unmasked polynomial from a masked one
-static void masked_poly_sub(masked_poly *r, const masked_poly *a, const poly *b){
+void masked_poly_sub(masked_poly *r, const masked_poly *a, const poly *b){
     poly_sub(&r->poly_shares[0], &a->poly_shares[0], b);
     for(int i = 1; i <= MASKING_ORDER; i++){
         r->poly_shares[i] = a->poly_shares[i];
@@ -146,7 +146,7 @@ static void helper_abs(Masked *x, Masked *bX, int phi){
     }
 }
 
-
+// Masked version of the poly_tomsg function, currently only works for NEWHOPE_N = 1024
 static void masked_poly_tomsg(unsigned char *msg, const masked_poly *x) {
     Masked t, t1, t2, t3, t4, Bt1, Bt2, Bt3, Bt4, final_res;
     CompMasked c1, c2, c3, c4, sum1, sum2, sum3;

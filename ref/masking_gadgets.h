@@ -1,5 +1,6 @@
 #ifndef NEWHOPE_MASKING_GADGETS_H
 #define NEWHOPE_MASKING_GADGETS_H
+#include "poly.h"
 
 #define MASKING_ORDER 3
 typedef struct Masked {uint16_t shares[MASKING_ORDER+1];} Masked;
@@ -22,6 +23,7 @@ int SecLeq_unmasked_res(Masked* x, int phi, int k);
 
 void SecAdd(CompMasked* z, CompMasked* x, CompMasked* y, int k);
 void SecMult(Masked* z, Masked* a, Masked* b);
+int polyZeroTestExpo(int K,  int L, masked_poly* X);
 
 
 #endif //NEWHOPE_MASKING_GADGETS_H

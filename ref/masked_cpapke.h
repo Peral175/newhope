@@ -3,6 +3,10 @@
 
 #include "poly.h"
 
+void decode_c(poly *b, poly *v, const unsigned char *r);
+
+void masked_poly_sub(masked_poly *r, const masked_poly *a, const poly *b);
+
 void masked_cpapke_keypair(unsigned char *pk,
                     unsigned char *sk);
 

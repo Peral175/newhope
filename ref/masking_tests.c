@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include "masked_fips202.h"
 #include "masked_cpakem.h"
+#include "masked_ccakem.h"
 
 static void gen_a(poly *a, const unsigned char *seed)
 {
@@ -16,12 +17,13 @@ int main(int argc, char *argv[]){
     unsigned char pk[NEWHOPE_CPAPKE_PUBLICKEYBYTES];
     unsigned char sk[NEWHOPE_CPAPKE_SECRETKEYBYTES * (MASKING_ORDER+1)];
     unsigned char c[NEWHOPE_CPAPKE_CIPHERTEXTBYTES];
-    unsigned char c_masked[NEWHOPE_CPAPKE_CIPHERTEXTBYTES * (MASKING_ORDER+1)];
+    unsigned char ct[NEWHOPE_CPAPKE_CIPHERTEXTBYTES + NEWHOPE_SYMBYTES];
     unsigned char m[NEWHOPE_SYMBYTES * (MASKING_ORDER+1)];
     unsigned char m_combined[NEWHOPE_SYMBYTES];
     unsigned char m_dec[NEWHOPE_SYMBYTES * (MASKING_ORDER+1)];
     unsigned char m_dec_combined[NEWHOPE_SYMBYTES];
     unsigned char coin[NEWHOPE_SYMBYTES * (MASKING_ORDER+1)];
+    unsigned char skh[NEWHOPE_CPAPKE_SECRETKEYBYTES * (MASKING_ORDER+1) + NEWHOPE_CCAKEM_PUBLICKEYBYTES + 2*NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
 
 
     // Test the first version of the cpapke enc and dec functions (The ones to be used in the CPA KEM)
@@ -54,7 +56,7 @@ int main(int argc, char *argv[]){
         printf("Message index %d, Before: %d, After dec: %d \n", i, m_combined[i], m_dec_combined[i]);
     }*/
 
-    // Test the CPAKEM
+    /*// Test the CPAKEM
     randombytes(coin,NEWHOPE_SYMBYTES * (MASKING_ORDER+1));
 
     masked_keypair(pk, sk);
@@ -79,8 +81,32 @@ int main(int argc, char *argv[]){
 
     for(int i = 0; i<32; i++){
         printf("Message index %d, Encaps m: %d, Decaps m %d \n", i, m_combined[i], m_dec_combined[i]);
+    }*/
+
+    // Test the CCAKEM
+    masked_CCA_keypair(pk, skh);
+
+    // Here the m is an output
+    masked_CCA_encaps(ct, m, pk);
+
+    // Here the m_dec should be the same as m, though we got m from the encaps instead of generating it ourselves
+    masked_CCA_decaps(m_dec, ct, sk);
+
+    for(int i = 0; i < 32; i++){
+        for(int j = 0; j <= MASKING_ORDER; j++){
+            m_combined[i] ^= m[i + (j*NEWHOPE_SYMBYTES)];
+        }
     }
 
+    for(int i = 0; i < 32; i++){
+        for(int j = 0; j <= MASKING_ORDER; j++){
+            m_dec_combined[i] ^= m_dec[i + (j*NEWHOPE_SYMBYTES)];
+        }
+    }
+
+    for(int i = 0; i<32; i++){
+        printf("Message index %d, Encaps m: %d, Decaps m %d \n", i, m_combined[i], m_dec_combined[i]);
+    }
     // Testing how the masked hash function works.
     /*unsigned char t1[1 * (MASKING_ORDER+1)];
     unsigned char t2[1 * (MASKING_ORDER+1)];

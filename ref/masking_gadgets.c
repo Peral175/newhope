@@ -274,7 +274,7 @@ void secExpo(Masked* B, Masked* A, int e){
 
 
 //todo: test
-void polyZeroTestRed(int K, int size, masked_poly X[size], masked_short_poly Y[K]){
+void polyZeroTestRed(int K, int size, masked_poly* X, masked_short_poly* Y){
     for (int k=0; k<K;k++){
         for (int i=0; i<=MASKING_ORDER;i++){
             Y->poly_shares[i].coeffs[k] = 0;
@@ -300,7 +300,8 @@ void zeroTestExpoShares(Masked* B, Masked* A){
 } //algo 19
 
 
-int polyZeroTestExpo(int K,  int L, masked_poly X[L], masked_short_poly Y[K]){
+int polyZeroTestExpo(int K,  int L, masked_poly* X){
+    masked_short_poly Y[K];
     polyZeroTestRed(K,L,X,Y);
     Masked B,C,G;
     for (int m=0;m<=MASKING_ORDER;m++){
@@ -529,13 +530,13 @@ void opti_A2B(Masked *s, Masked *z){
 }
 
 
-/*int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 //    if (argc != 2){
 //    	return -1;
 //    }
     srand(time(NULL));
 
-    Masked x, y;
+    /*Masked x, y;
     basic_gen_shares_mod(&x);
     int t = pow(2, 15);
 
@@ -552,7 +553,7 @@ void opti_A2B(Masked *s, Masked *z){
         comb_y ^= y.shares[i];
     }
 
-    printf("Expected %d, Result %d", comb_x, comb_y);
+    printf("Expected %d, Result %d", comb_x, comb_y);*/
     /*
     Masked x;
     Masked y;
@@ -676,37 +677,37 @@ void opti_A2B(Masked *s, Masked *z){
     printf("Y: %d \n", Y1 % NEWHOPE_Q);
 
 
-//    // Algorithm 23 test!
-//    Masked v,w,x;
-//    basic_gen_shares_mod(&v);
-//    basic_gen_shares_mod(&w);
-//    Masked arr1[] = {v, w};
-//    Masked arr2[] = {x};
-//    int size,k;
-//    k = 1;
-//    size = sizeof(arr1) / sizeof(arr1[0]);
-//    polyZeroTestRed(k, size, arr1, arr2);
+    // Algorithm 23 test!
+    Masked v,w,x;
+    basic_gen_shares_mod(&v);
+    basic_gen_shares_mod(&w);
+    Masked arr1[] = {v, w};
+    Masked arr2[] = {x};
+    int size,k;
+    k = 1;
+    size = sizeof(arr1) / sizeof(arr1[0]);
+    polyZeroTestRed(k, size, arr1, arr2);
 
-//    // Algorithm 19 test!
-//    Masked a,b;
-//    uint16_t A;
-//    a.shares[0]=0;
-//    a.shares[1]=0;
-//    a.shares[2]=0;
-//    a.shares[3]=0;
-//    for(int i = 0; i <= MASKING_ORDER; i++){
-//        printf("x Share %d: %d \n", i, a.shares[i]);
-//        A += a.shares[i];
-//    }
-//    zeroTestExpoShares(&b,&a);
-//    uint16_t B;
-//    for(int i = 0; i <= MASKING_ORDER; i++){
-//        printf("y Share %d: %d \n", i, b.shares[i]);
-//        B += b.shares[i];
-//    }
-//    printf("A: %d \n", A % NEWHOPE_Q);
-//    printf("B: %d \n", B % NEWHOPE_Q);
-
+    // Algorithm 19 test!
+    Masked a,b;
+    uint16_t A;
+    a.shares[0]=0;
+    a.shares[1]=0;
+    a.shares[2]=0;
+    a.shares[3]=0;
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("x Share %d: %d \n", i, a.shares[i]);
+        A += a.shares[i];
+    }
+    zeroTestExpoShares(&b,&a);
+    uint16_t B;
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        printf("y Share %d: %d \n", i, b.shares[i]);
+        B += b.shares[i];
+    }
+    printf("A: %d \n", A % NEWHOPE_Q);
+    printf("B: %d \n", B % NEWHOPE_Q);
+    */
     // Algorithm 25 test!
     masked_poly X;
     for (int i=0;i<1024;i++) {
@@ -718,6 +719,6 @@ void opti_A2B(Masked *s, Masked *z){
     masked_short_poly Y;
     int k = 8;
     int l = 1024;
-    int bool = polyZeroTestExpo(k,l, &X, &Y);
+    int bool = polyZeroTestExpo(k,l, &X);
     printf("bool: %d \n", bool);
-}*/
+}
