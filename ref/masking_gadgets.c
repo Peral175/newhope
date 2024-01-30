@@ -17,32 +17,48 @@ typedef struct {
 } masked_short_poly;
 
 
-uint16_t random16(){
-    //srand(time(NULL));  // Set at start of the new_hope functions later, or get better randomness
-    uint16_t x = rand();
-    return x;
+// Taken from "https://github.com/fragerar/HOTableConv/tree/main/Masked_KEMs"
+uint32_t rand32(){
+
+#ifdef COUNT
+    count_rand++;
+#endif
+
+#if RNG_MODE == 1
+    unsigned t;
+
+  x ^= x << 16;
+  x ^= x >> 5;
+  x ^= x << 1;
+
+  t = x;
+  x = y;
+  y = z;
+  z = t ^ x ^ y;
+  return z;
+#elif RNG_MODE == 2
+    return rand();
+#elif RNG_MODE == 0
+    return 0;
+#endif
+
 }
 
-
-uint16_t random16mod(){
-    //srand(time(NULL));  // Set at start of the new_hope functions later, or get better randomness
-    uint16_t x = rand() % NEWHOPE_Q;
-    return x;
+// Taken from "https://github.com/fragerar/HOTableConv/tree/main/Masked_KEMs"
+uint16_t rand16(){
+    return (uint16_t)rand32()&(0xFFFF);
 }
-
 
 void basic_gen_shares_mod(Masked *x){
     for(int i = 0; i <= MASKING_ORDER; i++) {
-        x->shares[i] = random16mod();
+        x->shares[i] = rand16() % NEWHOPE_Q;
     }
 }
 
-
 // Only for testing
-void basic_gen_shares(Masked *x, Masked *y){
+void basic_gen_shares(Masked *x){
     for(int i = 0; i <= MASKING_ORDER; i++) {
-        x->shares[i] = random16();
-        y->shares[i] = random16();
+        x->shares[i] = rand16();
     }
 }
 
@@ -51,7 +67,7 @@ void basic_gen_shares(Masked *x, Masked *y){
 // From paper "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryption
 void arith_refresh(Masked* x, int q){
     for(int j = 0; j < MASKING_ORDER; j++){
-        uint16_t r = random16() % q;
+        uint16_t r = rand32() % q;
         x->shares[j] = (x->shares[j] + r) % q;
         x->shares[MASKING_ORDER] = (x->shares[MASKING_ORDER] + q - r) % q;
     }
@@ -67,7 +83,7 @@ Lattice-based Encryption"
  **/
 void boolean_refresh(Masked* x){
     for(int j = 0; j < MASKING_ORDER; j++){
-        uint16_t r = random16();
+        uint16_t r = rand16();
         x->shares[j] = (x->shares[j] ^ r);
         x->shares[MASKING_ORDER] = x->shares[MASKING_ORDER] ^ r;
     }
@@ -181,7 +197,7 @@ void secAnd(Masked* z, Masked* a, Masked* b, int k){
     for (int i=0; i<=MASKING_ORDER;i++){
         for (int j=i+1; j<=MASKING_ORDER;j++){
             uint16_t r,r_p;
-            r = random16() >> (16 - k);
+            r = rand16() >> (16 - k);
             r_p = (r ^ (a->shares[i] & b->shares[j])) ^ (a->shares[j] & b->shares[i]);
             z->shares[i] ^= r;
             z->shares[j] ^= r_p;
@@ -205,7 +221,7 @@ void SecMult(Masked* z, Masked* a, Masked* b){
     for (int i=0; i<=MASKING_ORDER;i++){
         for (int j=i+1; j<=MASKING_ORDER;j++){
             uint16_t r,r_p;
-            r = random16() % NEWHOPE_Q;
+            r = rand16() % NEWHOPE_Q;
             r_p = ((r + (a->shares[i] * b->shares[j]) % NEWHOPE_Q) + (a->shares[j] * b->shares[i]) % NEWHOPE_Q) % NEWHOPE_Q;
             z->shares[i] = (NEWHOPE_Q + z->shares[i] - r) % NEWHOPE_Q;
             z->shares[j] = (z->shares[j]+ r_p) % NEWHOPE_Q;
@@ -227,7 +243,7 @@ void refreshMasks(Masked* c, Masked* a){
     }
     for (int i=0;i<=MASKING_ORDER;i++){
         for (int j=i+1; j<=MASKING_ORDER;j++){
-            uint16_t r = random16mod();
+            uint16_t r = rand16() % NEWHOPE_Q;
             c->shares[i] = (c->shares[i] + r) % NEWHOPE_Q;
             c->shares[j] = (NEWHOPE_Q + c->shares[j] - r) % NEWHOPE_Q;
         }
@@ -277,7 +293,7 @@ void polyZeroTestRed(int K, int size, masked_poly* X, masked_short_poly* Y){
             Y->poly_shares[i].coeffs[k] = 0;
         }
         for (int j=0;j<size;j++){
-            uint16_t a = random16mod();
+            uint16_t a = rand16() % NEWHOPE_Q;
             for (int i=0;i<=MASKING_ORDER;i++){
                 uint64_t r = (a * X->poly_shares[i].coeffs[j])%NEWHOPE_Q;
                 Y->poly_shares[i].coeffs[k] = (Y->poly_shares[i].coeffs[k] + r)%NEWHOPE_Q;
@@ -359,8 +375,8 @@ void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
     Masked Hy;
 
     // Calculate the hamming weight of the masked values
-    masked_Hamming_Weight(&Hx, x, 16);
-    masked_Hamming_Weight(&Hy, y, 16);
+    masked_Hamming_Weight(&Hx, x, k);
+    masked_Hamming_Weight(&Hy, y, k);
 
     // Calculate the substraction mod q for every share
     for(int i = 0; i <= MASKING_ORDER; i++){

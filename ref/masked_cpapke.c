@@ -242,7 +242,7 @@ static void masked_sample(masked_poly *r, const unsigned char *seed, unsigned ch
                 b.shares[z] = buf[2*j + 1 + z*128];
             }
             Masked samp;
-            masked_binomial_dist(&samp, &a, &b, 16);
+            masked_binomial_dist(&samp, &a, &b, 14);
             for(int z = 0; z <= MASKING_ORDER; z++) {
                 r->poly_shares[z].coeffs[64 * i + j] = samp.shares[z];
             }
