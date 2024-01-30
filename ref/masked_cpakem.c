@@ -39,7 +39,10 @@ int masked_decaps(unsigned char *ss, const unsigned char *ct, const unsigned cha
 {
     masked_cpapke_dec(ss, ct, sk);
 
-    shake256_masked(ss, NEWHOPE_SYMBYTES, ss, NEWHOPE_SYMBYTES);
+    // The masked hash function is not necessary if we are not using the masked decode
+    //shake256_masked(ss, NEWHOPE_SYMBYTES, ss, NEWHOPE_SYMBYTES);
+
+    shake256(ss, NEWHOPE_SYMBYTES, ss, NEWHOPE_SYMBYTES);
 
     return 0;
 }

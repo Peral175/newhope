@@ -3,7 +3,6 @@
 #include "randombytes.h"
 #include "masked_fips202.h"
 #include "masking_gadgets.h"
-#include <stdio.h>
 
 // Copied from cpapke.c
 static void encode_pk(unsigned char *r, const poly *pk, const unsigned char *seed)
@@ -76,6 +75,16 @@ void masked_poly_sub(masked_poly *r, const masked_poly *a, const poly *b){
     poly_sub(&r->poly_shares[0], &a->poly_shares[0], b);
     for(int i = 1; i <= MASKING_ORDER; i++){
         r->poly_shares[i] = a->poly_shares[i];
+    }
+}
+
+// Substraction of a masked polynomial from an unmasked one
+void masked_poly_sub3(masked_poly *r, const poly *b, const masked_poly *a){
+    poly_sub(&r->poly_shares[0], b, &a->poly_shares[0]);
+    for(int i = 1; i <= MASKING_ORDER; i++){
+        for(int j = 0; j < NEWHOPE_N; j++){
+            r->poly_shares[i].coeffs[j] = (-a->poly_shares[i].coeffs[j]) % NEWHOPE_Q;
+        }
     }
 }
 
@@ -307,7 +316,7 @@ void masked_cpapke_enc(unsigned char *c, const unsigned char *m, const unsigned 
 }
 
 void masked_cpapke_dec(unsigned char *m, const unsigned char *c, const unsigned char *sk){
-    poly vprime, uhat;
+    poly vprime, uhat, tmp_comb;
     masked_poly shat, tmp;
 
     // Secret key should still be masked here
@@ -317,9 +326,16 @@ void masked_cpapke_dec(unsigned char *m, const unsigned char *c, const unsigned 
     masked_poly_mul(&tmp, &shat, &uhat);
     reverse_NTT_masked_poly(&tmp);
 
+    // It seems like it doesn't matter which one you substract from which, the decoding will get you the correct message back in both cases
     masked_poly_sub(&tmp, &tmp, &vprime);
+    //masked_poly_sub3(&tmp, &vprime, &tmp);
 
-    masked_poly_tomsg(m, &tmp);
+    // masked_poly_tomsg is much too inefficient, for now we will unmask before calling the regular tomsg, this is of
+    // course not secure, however the overhead is too great to be practical as of now
+    //masked_poly_tomsg(m, &tmp);
+
+    recombine(&tmp_comb, &tmp);
+    poly_tomsg(m, &tmp_comb);
 }
 
 // Encode the ciphertext while it is still in masked form

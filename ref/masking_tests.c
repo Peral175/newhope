@@ -7,6 +7,9 @@
 #include "masked_fips202.h"
 #include "masked_cpakem.h"
 #include "masked_ccakem.h"
+#include "cpucycles.h"
+
+#define ITER 10
 
 static void gen_a(poly *a, const unsigned char *seed)
 {
@@ -56,8 +59,8 @@ int main(int argc, char *argv[]){
         printf("Message index %d, Before: %d, After dec: %d \n", i, m_combined[i], m_dec_combined[i]);
     }*/
 
-    /*// Test the CPAKEM
-    randombytes(coin,NEWHOPE_SYMBYTES * (MASKING_ORDER+1));
+    // Test the CPAKEM
+    /*randombytes(coin,NEWHOPE_SYMBYTES * (MASKING_ORDER+1));
 
     masked_keypair(pk, sk);
 
@@ -73,6 +76,7 @@ int main(int argc, char *argv[]){
         }
     }
 
+    // This part is not needed when we are not using the masked decode
     for(int i = 0; i < 32; i++){
         for(int j = 0; j <= MASKING_ORDER; j++){
             m_dec_combined[i] ^= m_dec[i + (j*NEWHOPE_SYMBYTES)];
@@ -80,7 +84,7 @@ int main(int argc, char *argv[]){
     }
 
     for(int i = 0; i<32; i++){
-        printf("Message index %d, Encaps m: %d, Decaps m %d \n", i, m_combined[i], m_dec_combined[i]);
+        printf("Message index %d, Encaps m: %d, Decaps m %d \n", i, m_combined[i], m_dec[i]);
     }*/
 
     // Test the CCAKEM
@@ -91,6 +95,17 @@ int main(int argc, char *argv[]){
 
     // Here the m_dec should be the same as m, though we got m from the encaps instead of generating it ourselves
     masked_CCA_decaps(m_dec, ct, skh);
+
+    uint64_t start, stop;
+    start = cpucycles();
+
+    for (int i = 0; i <= ITER; i++) {
+        masked_CCA_decaps(m_dec, ct, skh);
+    }
+
+    stop = cpucycles();
+
+    printf("Cpucycles for Masking order %d: %lu\n", MASKING_ORDER, (stop - start) / ITER);
 
     for(int i = 0; i < 32; i++){
         for(int j = 0; j <= MASKING_ORDER; j++){

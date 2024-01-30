@@ -2,7 +2,6 @@
 #define NEWHOPE_MASKING_GADGETS_H
 #include "poly.h"
 
-#define MASKING_ORDER 3
 typedef struct Masked {uint16_t shares[MASKING_ORDER+1];} Masked;
 
 // Only used in the LEQ and SecAdd function, didn't have the time to make this work with the Masked we already had

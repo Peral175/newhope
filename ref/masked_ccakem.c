@@ -55,7 +55,7 @@ int masked_CCA_keypair(unsigned char *pk, unsigned char *skh){
 }
 
 
-// TODO: Needs testing
+// Masked encapsulation for the CCAKEM
 int masked_CCA_encaps(unsigned char *ct, unsigned char *ss, const unsigned char *pk)
 {
     unsigned char coin[(NEWHOPE_SYMBYTES+1)*(MASKING_ORDER+1)];
@@ -115,12 +115,11 @@ int masked_CCA_encaps(unsigned char *ct, unsigned char *ss, const unsigned char 
 }
 
 
-// TODO: Implement Masked decapsulation for the CCAKEM
+// Masked decapsulation for the CCAKEM
 int masked_CCA_decaps(unsigned char *ss, const unsigned char *ct, const unsigned char *skh)
 {
     poly uhat, vprime;
     masked_poly m_uhat, m_vprime, uhat_diff;
-    unsigned char c_prime[NEWHOPE_CPAPKE_CIPHERTEXTBYTES] = {0};
 
     unsigned char coin_prime_prime[NEWHOPE_SYMBYTES*(MASKING_ORDER+1)];
     unsigned char sk[NEWHOPE_CPAPKE_SECRETKEYBYTES * (MASKING_ORDER+1)];
@@ -164,6 +163,12 @@ int masked_CCA_decaps(unsigned char *ss, const unsigned char *ct, const unsigned
         for(int i = 0; i < NEWHOPE_SYMBYTES; i++){
             s[i + j*(NEWHOPE_SYMBYTES)] = skh[i + j*(NEWHOPE_SYMBYTES) + start];
         }
+    }
+
+    // When we're recombining the message early for testing without the inefficient masked_poly_tomsg, then we need
+    // to first zero out all the m_prime buffer.
+    for(int i = 0; i < NEWHOPE_SYMBYTES*(MASKING_ORDER+1); i++){
+        m_prime[i] = 0;
     }
 
     // decrypt the given c

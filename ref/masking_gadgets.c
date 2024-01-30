@@ -1,8 +1,6 @@
 #include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
-#include <time.h>  // Take out later probably
 #include "masking_gadgets.h"
 #include "poly.h"
 
@@ -17,10 +15,6 @@ typedef struct {
 typedef struct {
     short_poly poly_shares[MASKING_ORDER+1];
 } masked_short_poly;
-
-
-// Need one more share than the order we want to have.
-//typedef struct Masked {uint16_t shares[MASKING_ORDER+1];} Masked;
 
 
 uint16_t random16(){
@@ -54,7 +48,7 @@ void basic_gen_shares(Masked *x, Masked *y){
 
 
 // Exchange the c modulos with the modulo function implemented in new hope later
-// From paper "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryptio
+// From paper "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryption
 void arith_refresh(Masked* x, int q){
     for(int j = 0; j < MASKING_ORDER; j++){
         uint16_t r = random16() % q;
@@ -273,7 +267,10 @@ void secExpo(Masked* B, Masked* A, int e){
 }
 
 
-//todo: test
+/*
+ * This function implements the algorithm 23
+ * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
+ **/
 void polyZeroTestRed(int K, int size, masked_poly* X, masked_short_poly* Y){
     for (int k=0; k<K;k++){
         for (int i=0; i<=MASKING_ORDER;i++){
@@ -287,9 +284,13 @@ void polyZeroTestRed(int K, int size, masked_poly* X, masked_short_poly* Y){
             }
         }
     }
-}  //algo 23
+}
 
 
+/*
+ * This function implements the algorithm 19
+ * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
+ **/
 void zeroTestExpoShares(Masked* B, Masked* A){
     Masked tmp;
     secExpo(&tmp,A,NEWHOPE_Q-1);
@@ -297,9 +298,13 @@ void zeroTestExpoShares(Masked* B, Masked* A){
     for (int j=1;j<=MASKING_ORDER;j++){
         B->shares[j] = NEWHOPE_Q - tmp.shares[j] % NEWHOPE_Q;
     }
-} //algo 19
+}
 
 
+/*
+ * This function implements the algorithm 25
+ * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
+ **/
 int polyZeroTestExpo(int K,  int L, masked_poly* X){
     masked_short_poly Y[K];
     polyZeroTestRed(K,L,X,Y);
@@ -327,7 +332,7 @@ int polyZeroTestExpo(int K,  int L, masked_poly* X){
     } else {
         return 0;
     }
-} //algo 25
+}
 
 
 void masked_Hamming_Weight(Masked* a, Masked* x, int k){
@@ -507,7 +512,7 @@ void shift(int k, Masked *a, Masked *z){
     }
 }
 
-// Optimized arithmetic to boolean conversion, taken from the paper High-order Table-based Conversion Algorithms and Masking
+// Optimized arithmetic to boolean conversion for modulo 2^k, taken from the paper High-order Table-based Conversion Algorithms and Masking
 // Lattice-based Encryption, Algorithm 11.
 void opti_A2B(Masked *s, Masked *z){
     Masked temp;
@@ -528,197 +533,3 @@ void opti_A2B(Masked *s, Masked *z){
         }
     }
 }
-
-
-/*int main(int argc, char *argv[]) {
-//    if (argc != 2){
-//    	return -1;
-//    }
-    srand(time(NULL));
-
-    /*Masked x, y;
-    basic_gen_shares_mod(&x);
-    int t = pow(2, 15);
-
-    int comb_x = 0;
-    int comb_y = 0;
-
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        comb_x = comb_x + x.shares[i];
-    }
-
-    opti_A2B(&y, &x);
-
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        comb_y ^= y.shares[i];
-    }
-
-    printf("Expected %d, Result %d", comb_x, comb_y);*/
-    /*
-    Masked x;
-    Masked y;
-    basic_gen_shares(&x, &y);
-
-    uint16_t X = 0;
-    uint16_t Y = 0;
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("X Share %d: %d \n", i, x.shares[i]);
-        X ^= x.shares[i];
-        printf("Y Share %d: %d \n", i, y.shares[i]);
-        Y ^= y.shares[i];
-    }
-
-    unsigned char i, rx = 0, ry = 0;
-    for(i=0;i<16;i++) {
-        rx += (X >> i) & 1;
-        ry += (Y >> i) & 1;
-    }
-
-    printf("X: %d \n", X % NEWHOPE_Q);
-    printf("Y: %d \n", Y % NEWHOPE_Q);
-
-    uint16_t reg_sample = (rx + NEWHOPE_Q - ry) % NEWHOPE_Q;
-
-    Masked masked_sample;
-    masked_binomial_dist(&masked_sample, &x, &y, 16);
-
-    uint16_t masked_sam = 0;
-
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        masked_sam = (masked_sam + masked_sample.shares[i]) % NEWHOPE_Q;
-    }
-
-    printf("Reg Sample %d\n", reg_sample);
-    printf("Masked Sample %d\n", masked_sam);
-    */
-
-    /*// Alex
-    Masked x2,y2;
-    basic_gen_shares_mod(&x2);
-    uint16_t X2 = 0;
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("X2 Share %d: %d \n", i, x2.shares[i]);
-        X2 = (X2 + x2.shares[i]) % NEWHOPE_Q;
-    }
-
-    A2B(&y2,&x2);
-
-    uint16_t Y2 = 0;
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("Y2 Share %d: %d \n", i, y2.shares[i]);
-        Y2 ^= y2.shares[i];
-    }
-    printf("X2: %d \n", X2             ); // bin
-    printf("Y2: %d \n", Y2  % NEWHOPE_Q); // arith*/
-
-    /*
-    Masked a,b,c,d,e,f;
-    basic_gen_shares_mod(&a);
-    basic_gen_shares_mod(&b);
-    basic_gen_shares_mod(&d);
-    basic_gen_shares_mod(&e);
-    uint16_t A = 0;
-    uint16_t B = 0;
-    uint16_t C = 0;
-    secAnd(&c,&a,&b);
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("a Share %d: %d \n", i, a.shares[i]);
-        A ^= a.shares[i];
-    }
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("b Share %d: %d \n", i, b.shares[i]);
-        B ^= b.shares[i];
-    }
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("c Share %d: %d \n", i, c.shares[i]);
-        C ^= c.shares[i];
-    }
-    printf("A: %d \n", A % NEWHOPE_Q);
-    printf("B: %d \n", B % NEWHOPE_Q);
-    printf("C: %d \n", C % NEWHOPE_Q);
-    printf("A & B: %d \n", (A & B) % NEWHOPE_Q);
-
-    uint16_t D = 0;
-    uint16_t E = 0;
-    uint16_t F = 0;
-    secMult(&f,&d,&e);
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("d Share %d: %d \n", i, d.shares[i]);
-        D += d.shares[i];
-    }
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("e Share %d: %d \n", i, e.shares[i]);
-        E += e.shares[i];
-    }
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("f Share %d: %d \n", i, f.shares[i]);
-        F += f.shares[i];
-    }
-    printf("D: %d \n", D % NEWHOPE_Q);
-    printf("E: %d \n", E % NEWHOPE_Q);
-    printf("F: %d \n", F % NEWHOPE_Q);
-    printf("D * E mod Q: %d \n", (D * E) % NEWHOPE_Q);
-    Masked x1,y1;
-    uint16_t X1=0;
-    uint16_t Y1=0;
-    basic_gen_shares_mod(&x1);
-    int eee = 2;
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("x Share %d: %d \n", i, x1.shares[i]);
-        X1 += x1.shares[i];
-    }
-    printf("X: %d \n", X1 % NEWHOPE_Q);
-    secExpo(&y1,&x1,eee);
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("y Share %d: %d \n", i, y1.shares[i]);
-        Y1 += y1.shares[i];
-    }
-    printf("Y should be : %d \n", (int) pow(X1,eee) % NEWHOPE_Q);
-    printf("Y: %d \n", Y1 % NEWHOPE_Q);
-
-
-    // Algorithm 23 test!
-    Masked v,w,x;
-    basic_gen_shares_mod(&v);
-    basic_gen_shares_mod(&w);
-    Masked arr1[] = {v, w};
-    Masked arr2[] = {x};
-    int size,k;
-    k = 1;
-    size = sizeof(arr1) / sizeof(arr1[0]);
-    polyZeroTestRed(k, size, arr1, arr2);
-
-    // Algorithm 19 test!
-    Masked a,b;
-    uint16_t A;
-    a.shares[0]=0;
-    a.shares[1]=0;
-    a.shares[2]=0;
-    a.shares[3]=0;
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("x Share %d: %d \n", i, a.shares[i]);
-        A += a.shares[i];
-    }
-    zeroTestExpoShares(&b,&a);
-    uint16_t B;
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        printf("y Share %d: %d \n", i, b.shares[i]);
-        B += b.shares[i];
-    }
-    printf("A: %d \n", A % NEWHOPE_Q);
-    printf("B: %d \n", B % NEWHOPE_Q);
-    */
-    // Algorithm 25 test!
-    /*masked_poly X;
-    for (int i=0;i<1024;i++) {
-        for (int j = 0; j <= MASKING_ORDER; j++) {
-            X.poly_shares[j].coeffs[i] = 0;
-        }
-    }
-
-    masked_short_poly Y;
-    int k = 8;
-    int l = 1024;
-    int bool = polyZeroTestExpo(k,l, &X);
-    printf("bool: %d \n", bool);
-}*/
