@@ -141,15 +141,15 @@ static void masked_poly_frommsg(masked_poly *r, const unsigned char *msg){
 }
 
 
-// Helper function to get absolute values of shared value x - a value phi.
-// Absolute value still doesn't work, I'm running out of ideas
+// Helper function to get the difference between two masked values.
+// Done by checking which value is smaller first and then substracting it from the larger one
 static void helper_abs(Masked *x, Masked *bX, int phi){
     if(SecLeq_unmasked_res(bX, phi, 16) == 1){
         x->shares[0] = ((phi + NEWHOPE_Q) - (x->shares[0] % NEWHOPE_Q)) % NEWHOPE_Q;
         for(int i = 1; i <= MASKING_ORDER; i++){
             x->shares[i] = ((0 + NEWHOPE_Q) - (x->shares[i] % NEWHOPE_Q)) % NEWHOPE_Q;
         }
-        //arith_refresh(x);
+        //arith_refresh(x, NEWHOPE_Q);
     } else {
         x->shares[0] = ((x->shares[0] + NEWHOPE_Q) - phi) % NEWHOPE_Q;
     }

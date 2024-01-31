@@ -9,7 +9,7 @@
 #include "masked_ccakem.h"
 #include "cpucycles.h"
 
-#define ITER 10
+#define ITER 100
 
 static void gen_a(poly *a, const unsigned char *seed)
 {

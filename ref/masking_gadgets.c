@@ -49,22 +49,13 @@ uint16_t rand16(){
     return (uint16_t)rand32()&(0xFFFF);
 }
 
-void basic_gen_shares_mod(Masked *x){
-    for(int i = 0; i <= MASKING_ORDER; i++) {
-        x->shares[i] = rand16() % NEWHOPE_Q;
-    }
-}
 
-// Only for testing
-void basic_gen_shares(Masked *x){
-    for(int i = 0; i <= MASKING_ORDER; i++) {
-        x->shares[i] = rand16();
-    }
-}
-
-
-// Exchange the c modulos with the modulo function implemented in new hope later
-// From paper "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryption
+/*
+ * This function implements the algorithm 4 Refresh
+ * from: "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryption"
+ * Input:
+ *      Masked* x: Mask to be refreshed
+ **/
 void arith_refresh(Masked* x, int q){
     for(int j = 0; j < MASKING_ORDER; j++){
         uint16_t r = rand32() % q;
@@ -76,8 +67,7 @@ void arith_refresh(Masked* x, int q){
 
 /*
  * This function implements the algorithm 9 Refresh
- * from: "High-order Table-based Conversion Algorithms and Masking
-Lattice-based Encryption"
+ * from: "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryption"
  * Input:
  *      Masked* x: Mask to be refreshed
  **/
@@ -90,8 +80,89 @@ void boolean_refresh(Masked* x){
 }
 
 
+/*
+ * This function implements the algorithm 12 RefreshMasks
+ * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
+ * Input:
+ *      Masked* a: Mask to be refreshed
+ *      Masked* c: output of operation
+ **/
+void refreshMasks(Masked* c, Masked* a){
+    for (int i=0;i<=MASKING_ORDER;i++){
+        c->shares[i] = a->shares[i];
+    }
+    for (int i=0;i<=MASKING_ORDER;i++){
+        for (int j=i+1; j<=MASKING_ORDER;j++){
+            uint16_t r = rand16() % NEWHOPE_Q;
+            c->shares[i] = (c->shares[i] + r) % NEWHOPE_Q;
+            c->shares[j] = (NEWHOPE_Q + c->shares[j] - r) % NEWHOPE_Q;
+        }
+    }
+}
+
+
+// Shift function, taken from the paper High-order Table-based Conversion Algorithms and Masking
+//Lattice-based Encryption, Algorithm 6. Used in the opti_A2B, but since opti_A2B isn't used this one isn't either.
+void shift(int k, Masked *a, Masked *z){
+    Masked x, c;
+    Masked T[2*(MASKING_ORDER+1)];
+
+    for(int i=0; i < MASKING_ORDER+1; ++i){
+        x.shares[i] = z->shares[i]&1;
+    }
+
+    for(int u=0; u < 2*(MASKING_ORDER+1); ++u) {
+        T[u].shares[0] = u >> 1;
+        for(int i=1; i < MASKING_ORDER+1; ++i){
+            T[u].shares[i] = 0;
+        }
+    }
+
+    for(int i=0; i < MASKING_ORDER; ++i){
+        for(int u=0; u < 2*((MASKING_ORDER+1)-(i+1)); ++u){
+            for(int j=0; j < MASKING_ORDER+1; ++j){
+                T[u].shares[j] = T[u+x.shares[i]].shares[j];
+            }
+            arith_refresh(&(T[u]), 1<<(k-1));
+        }
+    }
+
+    for(int i=0; i < MASKING_ORDER+1; ++i){
+        c.shares[i] = T[x.shares[MASKING_ORDER]].shares[i];
+    }
+    arith_refresh(&c, 1<<(k-1));
+
+    for(int i=0; i < MASKING_ORDER+1; ++i){
+        a->shares[i] = ((z->shares[i] >> 1) + c.shares[i])%(1<<(k-1));
+    }
+}
+
+
+// Optimized arithmetic to boolean conversion for modulo 2^k, taken from the paper High-order Table-based Conversion Algorithms and Masking
+// Lattice-based Encryption, Algorithm 11. Didn't end up being used.
+void opti_A2B(Masked *s, Masked *z){
+    Masked temp;
+    int k = 16;
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        s->shares[i] = 0;
+    }
+
+    for(int j = 0; j <= k-1; j++){
+        for(int i = 0; i <= MASKING_ORDER; i++){
+            s->shares[i] = s->shares[i] + ((z->shares[i] & 1) << j);
+        }
+
+        shift(k-j, &temp, z);
+
+        for(int i = 0; i <= MASKING_ORDER; i++){
+            z->shares[i] = temp.shares[i];
+        }
+    }
+}
+
+
 // Used in opti_B2A, this function is not used for anything other than k = 1
-// From paper "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryptio
+// From paper "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryption", algorithm 3
 void B2A(Masked* y, Masked* x, int k){
     Masked T[1 << k];
     Masked T_p[1 << k];
@@ -124,7 +195,7 @@ void B2A(Masked* y, Masked* x, int k){
 }
 
 
-// From paper "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryption"
+// From paper "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryption", algorithm 5
 void opti_B2A(Masked* y, Masked* x, int k){
     for(int i = 0; i <= MASKING_ORDER; i++){
         y->shares[i] = 0;
@@ -230,164 +301,6 @@ void SecMult(Masked* z, Masked* a, Masked* b){
 }
 
 
-/*
- * This function implements the algorithm 12 RefreshMasks
- * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
- * Input:
- *      Masked* a: Mask to be refreshed
- *      Masked* c: output of operation
- **/
-void refreshMasks(Masked* c, Masked* a){
-    for (int i=0;i<=MASKING_ORDER;i++){
-        c->shares[i] = a->shares[i];
-    }
-    for (int i=0;i<=MASKING_ORDER;i++){
-        for (int j=i+1; j<=MASKING_ORDER;j++){
-            uint16_t r = rand16() % NEWHOPE_Q;
-            c->shares[i] = (c->shares[i] + r) % NEWHOPE_Q;
-            c->shares[j] = (NEWHOPE_Q + c->shares[j] - r) % NEWHOPE_Q;
-        }
-    }
-}  //algo 12
-
-
-/*
- * This function implements the algorithm 18 SecExpo
- * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
- * Input:
- *      Masked* A: first operand
- *      Masked* e: exponent
- *      Masked* z: output of operation
- **/
-void secExpo(Masked* B, Masked* A, int e){
-    B->shares[0] = 1;
-    for (int j=1;j<=MASKING_ORDER;j++){
-        B->shares[j] = 0;
-    }
-    for (int i=ceil(log2( e));i>=0;--i){
-        Masked C;
-        refreshMasks(&C, B);
-        Masked tmp2;
-        SecMult(&tmp2, B, &C);
-        for(int j = 0; j <= MASKING_ORDER; j++){
-            B->shares[j] = tmp2.shares[j] % NEWHOPE_Q;
-        }
-        if ((e & (int) pow(2,i)) == (int) pow(2,i)) {
-            Masked tmp3;
-            SecMult(&tmp3, A, B);
-            for(int j = 0; j <= MASKING_ORDER; j++){
-                B->shares[j] = tmp3.shares[j] % NEWHOPE_Q;
-            }
-        }
-    }
-}
-
-
-/*
- * This function implements the algorithm 23
- * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
- **/
-void polyZeroTestRed(int K, int size, masked_poly* X, masked_short_poly* Y){
-    for (int k=0; k<K;k++){
-        for (int i=0; i<=MASKING_ORDER;i++){
-            Y->poly_shares[i].coeffs[k] = 0;
-        }
-        for (int j=0;j<size;j++){
-            uint16_t a = rand16() % NEWHOPE_Q;
-            for (int i=0;i<=MASKING_ORDER;i++){
-                uint64_t r = (a * X->poly_shares[i].coeffs[j])%NEWHOPE_Q;
-                Y->poly_shares[i].coeffs[k] = (Y->poly_shares[i].coeffs[k] + r)%NEWHOPE_Q;
-            }
-        }
-    }
-}
-
-
-/*
- * This function implements the algorithm 19
- * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
- **/
-void zeroTestExpoShares(Masked* B, Masked* A){
-    Masked tmp;
-    secExpo(&tmp,A,NEWHOPE_Q-1);
-    B->shares[0] = NEWHOPE_Q + 1 - tmp.shares[0] % NEWHOPE_Q;
-    for (int j=1;j<=MASKING_ORDER;j++){
-        B->shares[j] = NEWHOPE_Q - tmp.shares[j] % NEWHOPE_Q;
-    }
-}
-
-
-/*
- * This function implements the algorithm 25
- * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
- **/
-int polyZeroTestExpo(int K,  int L, masked_poly* X){
-    masked_short_poly Y[K];
-    polyZeroTestRed(K,L,X,Y);
-    Masked B,C,G;
-    for (int m=0;m<=MASKING_ORDER;m++){
-        G.shares[m] = Y->poly_shares[m].coeffs[0];
-    }
-    zeroTestExpoShares(&B,&G);
-    for (int j=1;j<K;j++){
-        Masked tmp,H;
-        for (int m=0;m<=MASKING_ORDER;m++){
-            H.shares[m] = Y->poly_shares[m].coeffs[j];
-        }
-        zeroTestExpoShares(&C,&H);
-        SecMult(&tmp,&B,&C);
-        B = tmp;
-    }
-    refreshMasks(&C,&B);
-    int b=0;
-    for (int m=0;m<=MASKING_ORDER;m++){
-        b = (b + C.shares[m]) %NEWHOPE_Q;
-    }
-    if (b == 1){
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-
-void masked_Hamming_Weight(Masked* a, Masked* x, int k){
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        a->shares[i] = 0;
-    }
-
-    for(int j = 0; j < k; j++){
-        Masked z;
-        for(int i = 0; i <= MASKING_ORDER; i++){
-            z.shares[i] = ((x->shares[i]) >> j) & 1;
-        }
-        Masked t;
-        B2A(&t, &z, 1);
-        for(int i = 0; i <= MASKING_ORDER; i++){
-            a->shares[i] = (a->shares[i] + t.shares[i]) % NEWHOPE_Q;
-        }
-    }
-}
-
-
-void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
-    Masked Hx;
-    Masked Hy;
-
-    // Calculate the hamming weight of the masked values
-    masked_Hamming_Weight(&Hx, x, k);
-    masked_Hamming_Weight(&Hy, y, k);
-
-    // Calculate the substraction mod q for every share
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        a->shares[i] = (Hx.shares[i] + NEWHOPE_Q - Hy.shares[i]);
-    }
-
-    // Refresh shares
-    arith_refresh(a, NEWHOPE_Q);
-}
-
-
 // Take boolean shares x, y, z, each 1 bit size, and calculate x+y+z;
 // Taken from paper "Bitslicing Arithmetic/Boolean Masking Conversions for Fun and Profit with Application to Lattice-Based KEMs"
 void fullAdder(Masked* w, Masked* x, Masked* y, Masked* z){
@@ -448,8 +361,148 @@ void SecAdd(CompMasked* z, CompMasked* x, CompMasked* y, int k){
 }
 
 
+/*
+ * This function implements the algorithm 18 SecExpo
+ * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
+ * Input:
+ *      Masked* A: first operand
+ *      int e: exponent
+ *      Masked* z: output of operation
+ **/
+void secExpo(Masked* B, Masked* A, int e){
+    B->shares[0] = 1;
+    for (int j=1;j<=MASKING_ORDER;j++){
+        B->shares[j] = 0;
+    }
+    for (int i=ceil(log2( e));i>=0;--i){
+        Masked C;
+        refreshMasks(&C, B);
+        Masked tmp2;
+        SecMult(&tmp2, B, &C);
+        for(int j = 0; j <= MASKING_ORDER; j++){
+            B->shares[j] = tmp2.shares[j] % NEWHOPE_Q;
+        }
+        if ((e & (int) pow(2,i)) == (int) pow(2,i)) {
+            Masked tmp3;
+            SecMult(&tmp3, A, B);
+            for(int j = 0; j <= MASKING_ORDER; j++){
+                B->shares[j] = tmp3.shares[j] % NEWHOPE_Q;
+            }
+        }
+    }
+}
+
+
+/*
+ * This function implements the algorithm 19
+ * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
+ **/
+void zeroTestExpoShares(Masked* B, Masked* A){
+    Masked tmp;
+    secExpo(&tmp,A,NEWHOPE_Q-1);
+    B->shares[0] = NEWHOPE_Q + 1 - tmp.shares[0] % NEWHOPE_Q;
+    for (int j=1;j<=MASKING_ORDER;j++){
+        B->shares[j] = NEWHOPE_Q - tmp.shares[j] % NEWHOPE_Q;
+    }
+}
+
+
+/*
+ * This function implements the algorithm 23
+ * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
+ **/
+void polyZeroTestRed(int K, int size, masked_poly* X, masked_short_poly* Y){
+    for (int k=0; k<K;k++){
+        for (int i=0; i<=MASKING_ORDER;i++){
+            Y->poly_shares[i].coeffs[k] = 0;
+        }
+        for (int j=0;j<size;j++){
+            uint16_t a = rand16() % NEWHOPE_Q;
+            for (int i=0;i<=MASKING_ORDER;i++){
+                uint64_t r = (a * X->poly_shares[i].coeffs[j])%NEWHOPE_Q;
+                Y->poly_shares[i].coeffs[k] = (Y->poly_shares[i].coeffs[k] + r)%NEWHOPE_Q;
+            }
+        }
+    }
+}
+
+
+/*
+ * This function implements the algorithm 25
+ * From: "High-order Polynomial Comparison and Masking Lattice-based Encryption"
+ **/
+int polyZeroTestExpo(int K,  int L, masked_poly* X){
+    masked_short_poly Y[K];
+    polyZeroTestRed(K,L,X,Y);
+    Masked B,C,G;
+    for (int m=0;m<=MASKING_ORDER;m++){
+        G.shares[m] = Y->poly_shares[m].coeffs[0];
+    }
+    zeroTestExpoShares(&B,&G);
+    for (int j=1;j<K;j++){
+        Masked tmp,H;
+        for (int m=0;m<=MASKING_ORDER;m++){
+            H.shares[m] = Y->poly_shares[m].coeffs[j];
+        }
+        zeroTestExpoShares(&C,&H);
+        SecMult(&tmp,&B,&C);
+        B = tmp;
+    }
+    refreshMasks(&C,&B);
+    int b=0;
+    for (int m=0;m<=MASKING_ORDER;m++){
+        b = (b + C.shares[m]) %NEWHOPE_Q;
+    }
+    if (b == 1){
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+/*
+ * This function implements the algorithm 14
+ * From: "High-order Table-based Conversion Algorithms and Masking Lattice-based Encryption"
+ **/
+void masked_Hamming_Weight(Masked* a, Masked* x, int k){
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        a->shares[i] = 0;
+    }
+
+    for(int j = 0; j < k; j++){
+        Masked z;
+        for(int i = 0; i <= MASKING_ORDER; i++){
+            z.shares[i] = ((x->shares[i]) >> j) & 1;
+        }
+        Masked t;
+        B2A(&t, &z, 1);
+        for(int i = 0; i <= MASKING_ORDER; i++){
+            a->shares[i] = (a->shares[i] + t.shares[i]) % NEWHOPE_Q;
+        }
+    }
+}
+
+
+void masked_binomial_dist(Masked* a, Masked* x, Masked* y, int k){
+    Masked Hx;
+    Masked Hy;
+
+    // Calculate the hamming weight of the masked values
+    masked_Hamming_Weight(&Hx, x, k);
+    masked_Hamming_Weight(&Hy, y, k);
+
+    // Calculate the substraction mod q for every share
+    for(int i = 0; i <= MASKING_ORDER; i++){
+        a->shares[i] = (Hx.shares[i] + NEWHOPE_Q - Hy.shares[i]);
+    }
+
+    // Refresh shares
+    arith_refresh(a, NEWHOPE_Q);
+}
+
+
 // Take boolean shared value x and check if it is smaller or equal to phi
-// Taken from paper "Protecting Dilithium against Leakage Revisited Sensitivity Analysis and Improved Implementations"
+// Algorithm 4 from paper "Protecting Dilithium against Leakage Revisited Sensitivity Analysis and Improved Implementations"
 void SecLeq_masked_res(Masked* res, CompMasked* x, int phi, int k){
     int t;
     CompMasked temp;
@@ -490,62 +543,4 @@ int SecLeq_unmasked_res(Masked* x, int phi, int k){
     }
 
     return ret_val;
-}
-
-// Shift function, taken from the paper High-order Table-based Conversion Algorithms and Masking
-//Lattice-based Encryption, Algorithm 6.
-void shift(int k, Masked *a, Masked *z){
-    Masked x, c;
-    Masked T[2*(MASKING_ORDER+1)];
-
-    for(int i=0; i < MASKING_ORDER+1; ++i){
-        x.shares[i] = z->shares[i]&1;
-    }
-
-    for(int u=0; u < 2*(MASKING_ORDER+1); ++u) {
-        T[u].shares[0] = u >> 1;
-        for(int i=1; i < MASKING_ORDER+1; ++i){
-            T[u].shares[i] = 0;
-        }
-    }
-
-    for(int i=0; i < MASKING_ORDER; ++i){
-        for(int u=0; u < 2*((MASKING_ORDER+1)-(i+1)); ++u){
-            for(int j=0; j < MASKING_ORDER+1; ++j){
-                T[u].shares[j] = T[u+x.shares[i]].shares[j];
-            }
-            arith_refresh(&(T[u]), 1<<(k-1));
-        }
-    }
-
-    for(int i=0; i < MASKING_ORDER+1; ++i){
-        c.shares[i] = T[x.shares[MASKING_ORDER]].shares[i];
-    }
-    arith_refresh(&c, 1<<(k-1));
-
-    for(int i=0; i < MASKING_ORDER+1; ++i){
-        a->shares[i] = ((z->shares[i] >> 1) + c.shares[i])%(1<<(k-1));
-    }
-}
-
-// Optimized arithmetic to boolean conversion for modulo 2^k, taken from the paper High-order Table-based Conversion Algorithms and Masking
-// Lattice-based Encryption, Algorithm 11.
-void opti_A2B(Masked *s, Masked *z){
-    Masked temp;
-    int k = 16;
-    for(int i = 0; i <= MASKING_ORDER; i++){
-        s->shares[i] = 0;
-    }
-
-    for(int j = 0; j <= k-1; j++){
-        for(int i = 0; i <= MASKING_ORDER; i++){
-            s->shares[i] = s->shares[i] + ((z->shares[i] & 1) << j);
-        }
-
-        shift(k-j, &temp, z);
-
-        for(int i = 0; i <= MASKING_ORDER; i++){
-            z->shares[i] = temp.shares[i];
-        }
-    }
 }

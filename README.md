@@ -1,3 +1,6 @@
+# Additions: Masking of new hope
+This was an academic project to try and mask new hope. The masking has been implemented inside of the ref folder, however still contains major efficiency issues.
+
 # NewHope
 
 Implementations of the NewHope key-encapsulation mechanism specified in the submission to the 
